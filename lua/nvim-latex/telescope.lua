@@ -8,7 +8,7 @@ local latex = require "nvim-latex"
 
 local M = {}
 
--- TODO
+-- TODO fix up with whatever extra info I need.
 local make_entry_from_ref = function(entry)
     local node = entry.node
     local text = latex.get_text_in_node(node) -- TODO handle bufnr better
