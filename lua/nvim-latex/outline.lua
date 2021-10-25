@@ -4,13 +4,14 @@ local ts_query = require("nvim-treesitter.query")
 
 local M = {}
 
--- This is just for latex
+-- This module is just for latex
 local lang = "latex"
 local qgroup = "outline"
 
 -- The DOM for the latex document
 M._doc_tree = { capture = "root", children = {}, }
 
+--- Check if range b is a subset of range a
 local function range_in_range(b, a)
     -- starting point
     start = a[1] < b[1] or (a[1] == b[1] and a[2] <= b[2])
@@ -19,8 +20,22 @@ local function range_in_range(b, a)
     return start and last
 end
 
--- Convert a query match to a DOM like node
-function M.match_to_docNode(query, pid, match, metadata)
+--- Check if the docNode b should be a child of docNode a
+local function is_child(a, b)
+    -- Checks if b is the child of a
+    if b then 
+        return range_in_range({b.node:range()}, {a.node:range()})
+    else
+        return nil
+    end
+end
+
+--- Convert a query match to a DOM like node
+--  
+--  This function is set up so that it can be called with an iterator:
+--      match_iterator = query:iter_matches(root, bufnr)
+--      docNode = match_to_docNode(query, match_iterator())
+local function match_to_docNode(query, pid, match, metadata)
     -- If pid is nil, then there was nothing new from the match_iterator
     if pid == nil then
         return nil
@@ -59,6 +74,24 @@ function M.match_to_docNode(query, pid, match, metadata)
     return docNode
 end
 
+--- Makes a document subtree out of the rootNode from matches provided by match_iter
+--
+--  Returns the full subtree, and the next docNode, so that we can use it like
+--  an iterator.
+local function make_subtree(query, rootNode, match_iter)
+    nextNode = match_to_docNode(query, match_iter())
+    while (is_child(rootNode, nextNode)) do
+        subtree, nextNode = make_subtree(query, nextNode, match_iter)
+        table.insert(rootNode.children, subtree)
+    end
+    return rootNode, nextNode
+end
+
+--- The main function to create the document tree.
+--
+--  This will have to be called whenever the buffer is changed
+--  TODO: can we cache this reasonably?
+--  TODO: maybe do some async processing so that it won't hang
 M.create_doc_tree = function(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local root = vim.treesitter.get_parser(bufnr, lang):trees()[1]:root()
@@ -66,36 +99,21 @@ M.create_doc_tree = function(bufnr)
 
     M._doc_tree = { capture = "root", children = {} }
     match_iter = query:iter_matches(root, bufnr)
-    nextNode = M.match_to_docNode(query, match_iter())
+    nextNode = match_to_docNode(query, match_iter())
     while (nextNode) do
-        subtree, nextNode = M.make_subtree(query, nextNode, match_iter)
+        subtree, nextNode = make_subtree(query, nextNode, match_iter)
         table.insert(M._doc_tree.children, subtree)
     end
 
     return M._doc_tree
 end
 
-M.make_subtree = function(query, rootNode, match_iter)
-    nextNode = M.match_to_docNode(query, match_iter())
-    while (M.is_child(rootNode, nextNode)) do
-        subtree, nextNode = M.make_subtree(query, nextNode, match_iter)
-        table.insert(rootNode.children, subtree)
-    end
-    return rootNode, nextNode
-end
-
-M.is_child = function(a, b)
-    -- Checks if b is the child of a
-    if b then 
-        return range_in_range({b.node:range()}, {a.node:range()})
-    else
-        return nil
-    end
-end
-
     
 return M
 
+-- Design decisions,
+-- ----------------
+--
 -- Problem with nvim-treesitter matches:
 -- Only one capture of each type can be included in a group, because the key
 -- for the match is the capture name. So, we can have
