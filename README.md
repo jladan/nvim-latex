@@ -25,10 +25,16 @@ Insert a cross-reference:
     - [ ] Pull citation keys from `\bibitem`s in the document
     - [ ] insert a citation from a menu
     - [ ] list all missing citation keys
+    - [ ] integrate with zotero
 - [ ] Multi-file documents
     - [ ] reliably determine which file is the root document
     - [ ] track all buffers, ideally in the same tree
     - [ ] pull labels, references, and citations from all files
+- [ ] Outlining
+    - [ ] Find all chapters, sections, subsections, etc
+    - [ ] Find all figures with captions and labels
+    - [ ] Create a scratch buffer that presents an outline of the document
+    - [ ] Add the ability to jump from the outline to that part of the document.
 
 ## Dependencies
 
