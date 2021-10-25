@@ -1,6 +1,7 @@
 -- Create an outline of a latex document
 
 local ts_query = require("nvim-treesitter.query")
+local utils = require("nvim-latex")
 
 local M = {}
 
@@ -108,7 +109,50 @@ M.create_doc_tree = function(bufnr)
     return M._doc_tree
 end
 
-    
+--- Create a formatted string of the docNode
+M.pretty_print = function(docNode, depth)
+    depth = depth or 0
+
+    local prettified = {}
+    -- Format the current docNode
+    local formatter = M.formatter[docNode.capture]
+    if formatter then
+        table.insert(prettified, formatter(docNode, depth))
+    end
+    -- Format the children at a deeper level
+    for _, child in ipairs(docNode.children) do
+        table.insert(prettified, M.pretty_print(child, depth + 2))
+    end
+
+    return table.concat(prettified, "\n")
+end
+
+local function title_text(docNode)
+    local title = utils.get_text_in_node(docNode.title.node)
+    return(string.sub(title, 2, -2))
+end
+
+M.formatter = {
+    document = function(docNode, depth)
+        return string.rep(" ", depth) .. "DOCUMENT START"
+    end,
+    section = function(docNode, depth)
+        return string.rep(" ", depth) .. title_text(docNode)
+    end,
+    subsection = function(docNode, depth)
+        return string.rep(" ", depth) .. title_text(docNode)
+    end,
+    subsubsection = function(docNode, depth)
+        return string.rep(" ", depth) .. title_text(docNode)
+    end,
+    paragraph = function(docNode, depth)
+        return string.rep(" ", depth) .. title_text(docNode)
+    end,
+    subparagraph = function(docNode, depth)
+        return string.rep(" ", depth) .. title_text(docNode)
+    end,
+}
+
 return M
 
 -- Design decisions,
