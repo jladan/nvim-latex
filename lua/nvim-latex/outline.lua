@@ -127,29 +127,40 @@ M.pretty_print = function(docNode, depth)
     return table.concat(prettified, "\n")
 end
 
-local function title_text(docNode)
-    local title = utils.get_text_in_node(docNode.title.node)
+local function inner_text(node)
+    local title = utils.get_text_in_node(node)
     return(string.sub(title, 2, -2))
 end
 
+local function prefix(depth)
+    return string.rep(" ", depth)
+end
+
+local function section_formatter(docNode, depth)
+    return prefix(depth) .. inner_text(docNode.title.node)
+end
+
+
 M.formatter = {
     document = function(docNode, depth)
-        return string.rep(" ", depth) .. "DOCUMENT START"
+        return prefix(depth) .. "DOCUMENT START"
     end,
-    section = function(docNode, depth)
-        return string.rep(" ", depth) .. title_text(docNode)
-    end,
-    subsection = function(docNode, depth)
-        return string.rep(" ", depth) .. title_text(docNode)
-    end,
-    subsubsection = function(docNode, depth)
-        return string.rep(" ", depth) .. title_text(docNode)
-    end,
-    paragraph = function(docNode, depth)
-        return string.rep(" ", depth) .. title_text(docNode)
-    end,
-    subparagraph = function(docNode, depth)
-        return string.rep(" ", depth) .. title_text(docNode)
+    section = section_formatter,
+    subsection = section_formatter,
+    subsubsection = section_formatter,
+    paragraph = section_formatter,
+    subparagraph = section_formatter,
+    figure = function(docNode, depth)
+        local fig_path = nil
+        local fig_label = nil
+        for _, child in ipairs(docNode.children) do
+            if child.capture == "graphics" then
+                fig_path = utils.get_text_in_node(child.path.node)
+            elseif child.capture == "label" then
+                fig_label = utils.get_text_in_node(child.name.node)
+            end
+        end
+        return prefix(depth) .. "FIGURE " .. fig_label .. " :: " .. fig_path
     end,
 }
 
