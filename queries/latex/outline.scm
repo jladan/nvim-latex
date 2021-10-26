@@ -1,26 +1,26 @@
 ; A set of queries for outlining a latex document
 
 ; ENVIRONMENTS
-((environment 
+((environment
     begin: (begin
-        name: (word) @document.type) 
+        name: (word) @document.type)
  ) @document
  (#match? @document.type "document")
 )
 
-((environment 
+((environment
     begin: (begin
-        name: (word) @abstract.type) 
+        name: (word) @abstract.type)
     child: (_) @abstract.contents) @abstract
  (#match? @abstract.type "abstract"))
 
-((environment 
-    begin: (begin name: (word) @figure.type) 
+((environment
+    begin: (begin name: (word) @figure.type)
     ) @figure
  (#match? @figure.type "figure"))
 
-((environment 
-    begin: (begin name: (word) @table.type) 
+((environment
+    begin: (begin name: (word) @table.type)
     ) @table
  (#match? @table.type "table"))
 
@@ -56,18 +56,18 @@
 )
 
 ; METADATA
-((caption 
+((caption
    short: ((bracket_group) @caption.short)?
    long:  ((brace_group) @caption.long)
  ) @caption
 )
 
-((label_definition 
+((label_definition
     name: ((word) @label.name)
  ) @label
 )
 
-((graphics_include 
+((graphics_include
     path: ((path) @graphics.path)
  ) @graphics
 )

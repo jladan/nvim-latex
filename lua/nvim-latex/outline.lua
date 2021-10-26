@@ -24,7 +24,7 @@ end
 --- Check if the docNode b should be a child of docNode a
 local function is_child(a, b)
     -- Checks if b is the child of a
-    if b then 
+    if b then
         return range_in_range({b.node:range()}, {a.node:range()})
     else
         return nil
@@ -32,7 +32,7 @@ local function is_child(a, b)
 end
 
 --- Convert a query match to a DOM like node
---  
+--
 --  This function is set up so that it can be called with an iterator:
 --      match_iterator = query:iter_matches(root, bufnr)
 --      docNode = match_to_docNode(query, match_iterator())
@@ -110,7 +110,8 @@ M.create_doc_tree = function(bufnr)
 end
 
 --- Create a formatted string of the docNode
-M.pretty_print = function(docNode, depth)
+M.prettify = function(docNode, depth)
+    docNode = docNode or M._doc_tree
     depth = depth or 0
 
     local prettified = {}
@@ -121,7 +122,7 @@ M.pretty_print = function(docNode, depth)
     end
     -- Format the children at a deeper level
     for _, child in ipairs(docNode.children) do
-        table.insert(prettified, M.pretty_print(child, depth + 2))
+        table.insert(prettified, M.prettify(child, depth + 2))
     end
 
     return table.concat(prettified, "\n")
@@ -169,7 +170,7 @@ M.formatter = {
                 table_label = utils.get_text_in_node(child.name.node)
             end
         end
-        return prefix(depth) .. "TABLE " .. table_label 
+        return prefix(depth) .. "TABLE " .. table_label
     end,
 }
 
@@ -185,7 +186,7 @@ return M
 -- but we cannot have two different sections in one document
 -- assigning to `document.section`, overwrites the previous section
 --
--- This method of access also makes iteration over children more complicated: 
+-- This method of access also makes iteration over children more complicated:
 --   without knowing the key for the child, how do we know if it's actually a
 --   child or just metadata associated with the capture?
 -- That means that simply making `section.subsection` a list isn't sufficient:
