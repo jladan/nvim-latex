@@ -162,6 +162,15 @@ M.formatter = {
         end
         return prefix(depth) .. "FIGURE " .. fig_label .. " :: " .. fig_path
     end,
+    table = function(docNode, depth)
+        local table_label = ""
+        for _, child in ipairs(docNode.children) do
+            if child.capture == "label" then
+                table_label = utils.get_text_in_node(child.name.node)
+            end
+        end
+        return prefix(depth) .. "TABLE " .. table_label 
+    end,
 }
 
 return M
