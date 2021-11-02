@@ -1,7 +1,7 @@
 -- Create an outline of a latex document
 
 local ts_query = require("nvim-treesitter.query")
-local utils = require("nvim-latex")
+local utils = require("nvim-latex.utils")
 
 local M = {}
 
