@@ -21,6 +21,8 @@ function M.set_document_root(bufnr, rootfile)
     -- now get the absolute path and filename for use in the rest
     vim.b.latex_root = vim.fn.fnamemodify(rootfile, ":p:h")
     vim.b.latex_main = vim.fn.fnamemodify(rootfile, ":p")
+
+    return vim.b.latex_root
 end
 
 -- Find any bibtex files that are included in the document
@@ -28,7 +30,7 @@ function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
 
-    local root = vim.b.latex_root
+    local root = vim.b.latex_root or M.set_document_root(bufnr)
     local paths = {}
     for _, m in ipairs(matches) do
         local p = utils.get_text_in_node(m.node, bufnr)
@@ -46,5 +48,27 @@ function M.set_bibliographies(bufnr)
     return paths
 end
 
+-- Make a list of all the bibtex entries in bibliographies
+function M.collect_citations(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local entries = {}
+    for _, bib in ipairs(vim.b.latex_bibs or M.set_bibliographies(bufnr)) do
+        bibbuf = vim.fn.bufnr(bib, true)
+        -- The buffer has to be loaded for nvim-treesitter
+        vim.fn.bufload(bibbuf)
+        local matches = ts_query.get_capture_matches(bibbuf, '@entry', "references")
+        for _, m in ipairs(matches) do
+            m.bufnr = bibbuf
+            table.insert(entries, m)
+        end
+    end
+    local keys = {}
+    for _, e in ipairs(entries) do
+        if e.key then
+            table.insert(keys, utils.get_text_in_node(e.key.node, e.bufnr))
+        end
+    end
+    return keys
+end
 
 return M
