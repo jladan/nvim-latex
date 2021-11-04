@@ -11,18 +11,32 @@ local M = {}
 local lang = "latex"
 local query_group = "references"
 
-M.insert_ref = function(label, bufnr)
-    label = label or ""
+-- insert text at current cursor position
+local function insert_text(text, bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
     pos = vim.fn.getcurpos()
     row = pos[2] - 1
     col = pos[3] - 1
-    refstring = string.format("~\\ref{%s}", label)
-    pos[3] = pos[3] + #refstring
+    pos[3] = pos[3] + #text
 
-    vim.api.nvim_buf_set_text(bufnr, row, col, row, col, {refstring})
+    vim.api.nvim_buf_set_text(bufnr, row, col, row, col, {text})
     vim.fn.setpos('.', pos)
+end
+
+-- Insert a cross-reference at the current cursor position
+M.insert_ref = function(label, bufnr)
+    label = label or ""
+
+    refstring = string.format("~\\ref{%s}", label)
+    insert_text(refstring, bufnr)
+end
+
+-- Insert a citation at the current cursor position
+M.insert_citation = function(label, bufnr)
+    label = label or ""
+    refstring = string.format("~\\cite{%s}", label)
+    insert_text(refstring, bufnr)
 end
 
 --- Return all nodes for cross-reference definitions
