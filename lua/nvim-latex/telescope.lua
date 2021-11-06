@@ -22,7 +22,6 @@ local make_entry_from_ref = function(entry)
         display = text,
         -- Can add other data like the buf number
         bufnr = entry.bufnr,
-        lnum = 1, -- TODO
         label = text,
     }
 end
@@ -37,9 +36,18 @@ local function ref_picker(ref_list, inserter, opts)
     -- e.g. if there are multiple files for one document
 
     local function insert_ref(prompt_bufnr)
-        local entry = state.get_selected_entry(prompt_bufnr)
+        local picker = state.get_current_picker(prompt_bufnr)
+        local selections = picker._multi:get()
+        local label = {}
+        if selections and #selections > 0 then
+            for _, e in ipairs(selections) do
+                table.insert(label, e.label)
+            end
+        else
+            label = state.get_selected_entry(prompt_bufnr).label
+        end
         actions._close(prompt_bufnr, keepinsert)
-        inserter(entry.label, not keepinsert)
+        inserter(label, not keepinsert)
     end
 
     pickers.new(opts, {

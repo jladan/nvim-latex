@@ -25,6 +25,9 @@ end
 M.insert_citation = function(label, normal_mode)
     label = label or ""
     local after = normal_mode or false
+    if type(label) == "table" then
+        label = table.concat(label, ",")
+    end
     refstring = string.format("~\\cite{%s}", label)
     vim.api.nvim_put({refstring}, "c", after, true)
 end
