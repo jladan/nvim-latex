@@ -13,6 +13,13 @@ Insert a cross-reference:
 :nnoremap <leader>r <CMD>lua require("nvim-latex.telescope").cross_reference()<CR>
 ```
 
+Insert a citation
+
+```viml
+:inoremap <c-r> <CMD>lua require("nvim-latex.telescope").citation { keepinsert = true }<CR>
+:nnoremap <leader>r <CMD>lua require("nvim-latex.telescope").citation()<CR>
+```
+
 ## TODO
 
 - [ ] Cross-references
@@ -21,18 +28,18 @@ Insert a cross-reference:
     - [ ] check for `\ref{}` with missing `\label{}`
     - [ ] navigate to label definition, or reference
 - [ ] Citations
-    - [ ] Pull citation keys from the `\bibliography` command (bibtex)
+    - [X] Pull citation keys from the `\bibliography` command (bibtex)
     - [ ] Pull citation keys from `\bibitem`s in the document
-    - [ ] insert a citation from a menu
+    - [X] insert a citation from a menu
     - [ ] list all missing citation keys
     - [ ] integrate with zotero
 - [ ] Multi-file documents
     - [ ] reliably determine which file is the root document
     - [ ] track all buffers, ideally in the same tree
-    - [ ] pull labels, references, and citations from all files
+    - [/] pull labels, references, and citations from all files
 - [ ] Outlining
-    - [ ] Find all chapters, sections, subsections, etc
-    - [ ] Find all figures with captions and labels
+    - [X] Find all chapters, sections, subsections, etc
+    - [X] Find all figures with captions and labels
     - [ ] Create a scratch buffer that presents an outline of the document
     - [ ] Add the ability to jump from the outline to that part of the document.
 
