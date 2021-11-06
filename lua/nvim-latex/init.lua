@@ -48,27 +48,4 @@ function M.set_bibliographies(bufnr)
     return paths
 end
 
--- Make a list of all the bibtex entries in bibliographies
-function M.collect_citations(bufnr)
-    bufnr = bufnr or vim.fn.bufnr()
-    local entries = {}
-    for _, bib in ipairs(vim.b.latex_bibs or M.set_bibliographies(bufnr)) do
-        bibbuf = vim.fn.bufnr(bib, true)
-        -- The buffer has to be loaded for nvim-treesitter
-        vim.fn.bufload(bibbuf)
-        local matches = ts_query.get_capture_matches(bibbuf, '@entry', "references")
-        for _, m in ipairs(matches) do
-            m.bufnr = bibbuf
-            table.insert(entries, m)
-        end
-    end
-    local keys = {}
-    for _, e in ipairs(entries) do
-        if e.key then
-            table.insert(keys, utils.get_text_in_node(e.key.node, e.bufnr))
-        end
-    end
-    return keys
-end
-
 return M
