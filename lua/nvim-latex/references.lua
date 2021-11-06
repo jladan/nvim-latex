@@ -4,6 +4,7 @@ local ts_query = require("nvim-treesitter.query")
 local ts_parsers = require("nvim-treesitter.parsers")
 local ts_utils = require("nvim-treesitter.utils")
 local utils = require("nvim-latex.utils")
+local doc = require("nvim-latex")
 
 local M = {}
 
@@ -11,24 +12,33 @@ local M = {}
 local lang = "latex"
 local query_group = "references"
 
-M.insert_ref = function(label, bufnr)
+
+-- Insert a cross-reference at the current cursor position
+M.insert_ref = function(label, normal_mode)
     label = label or ""
-    bufnr = bufnr or vim.fn.bufnr()
-
-    pos = vim.fn.getcurpos()
-    row = pos[2] - 1
-    col = pos[3] - 1
+    local after = normal_mode or false
     refstring = string.format("~\\ref{%s}", label)
-    pos[3] = pos[3] + #refstring
+    vim.api.nvim_put({refstring}, "c", after, true)
+end
 
-    vim.api.nvim_buf_set_text(bufnr, row, col, row, col, {refstring})
-    vim.fn.setpos('.', pos)
+-- Insert a citation at the current cursor position
+M.insert_citation = function(label, normal_mode)
+    label = label or ""
+    local after = normal_mode or false
+    if type(label) == "table" then
+        label = table.concat(label, ",")
+    end
+    refstring = string.format("~\\cite{%s}", label)
+    vim.api.nvim_put({refstring}, "c", after, true)
 end
 
 --- Return all nodes for cross-reference definitions
 M.get_crossref_defs = function(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@latex.label', query_group)
+    for _, m in ipairs(matches) do
+        m.bufnr = bufnr
+    end
     
     return matches
 end
@@ -36,8 +46,28 @@ end
 M.get_crossref_refs = function(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@latex.ref', query_group)
+    for _, m in ipairs(matches) do
+        m.bufnr = bufnr
+    end
 
     return matches
+end
+
+-- Make a list of all the bibtex entries in bibliographies
+function M.get_citations(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local entries = {}
+    for _, bib in ipairs(vim.b.latex_bibs or doc.set_bibliographies(bufnr)) do
+        bibbuf = vim.fn.bufnr(bib, true)
+        -- The buffer has to be loaded for nvim-treesitter
+        vim.fn.bufload(bibbuf)
+        local matches = ts_query.get_capture_matches(bibbuf, '@entry.key', "references")
+        for _, m in ipairs(matches) do
+            m.bufnr = bibbuf
+            table.insert(entries, m)
+        end
+    end
+    return entries
 end
 
 return M
