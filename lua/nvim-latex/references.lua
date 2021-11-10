@@ -13,22 +13,18 @@ local lang = "latex"
 local query_group = "references"
 
 
--- Insert a cross-reference at the current cursor position
-M.insert_ref = function(label, normal_mode)
+-- Insert a reference at the current cursor position
+-- @label : the reference label or key
+-- @normal_mode : whether this is called in normal mode or insert mode
+-- @macroname : the name of the macro to use in the reference (ref, eqref, cite, etc)
+M.insert_ref = function(label, normal_mode, macroname)
     label = label or ""
     local after = normal_mode or false
-    refstring = string.format("~\\ref{%s}", label)
-    vim.api.nvim_put({refstring}, "c", after, true)
-end
-
--- Insert a citation at the current cursor position
-M.insert_citation = function(label, normal_mode)
-    label = label or ""
-    local after = normal_mode or false
+    macroname = macroname or 'ref'
     if type(label) == "table" then
         label = table.concat(label, ",")
     end
-    refstring = string.format("~\\cite{%s}", label)
+    refstring = string.format("~\\%s{%s}", macroname, label)
     vim.api.nvim_put({refstring}, "c", after, true)
 end
 
