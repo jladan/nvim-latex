@@ -42,6 +42,11 @@ Insert a citation
     - [X] Find all figures with captions and labels
     - [ ] Create a scratch buffer that presents an outline of the document
     - [ ] Add the ability to jump from the outline to that part of the document.
+- [ ] Fixing errors and warnings
+    - [ ] Navigate to next error/warning
+    - [ ] find unlabelled sections, figures, equations
+    - [ ] suggest labels for sections, figures, equations
+    - [ ] suggest matches for undefined references (like a spell check)
 
 ## Dependencies
 
