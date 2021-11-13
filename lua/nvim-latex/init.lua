@@ -83,14 +83,18 @@ function M.set_bibliographies(bufnr)
 
     local root = vim.b.latex_root or M.set_document_root(bufnr)
     local paths = {}
+    -- XXX There should only actually be one match, but this works anyway
+    -- it may be safer than just picking the first
     for _, m in ipairs(matches) do
-        local p = utils.get_text_in_node(m.node, bufnr)
-        -- TODO handle with document root
-        if string.lower(string.sub(p, -4, -1)) ~= ".bib" then
-            p = p .. ".[bB][iI][bB]"
-        end
-        for _, fname in ipairs(vim.fn.globpath(root, p, true, true)) do
-            table.insert(paths, vim.fn.simplify(fname))
+        local bibfiles = utils.get_text_in_node(m.node, bufnr)
+        -- multiple bibtex files are in a comma-delimited list
+        for _, p in ipairs(vim.fn.split(bibfiles, ",\\s*")) do
+            if string.lower(string.sub(p, -4, -1)) ~= ".bib" then
+                p = p .. ".[bB][iI][bB]"
+            end
+            for _, fname in ipairs(vim.fn.globpath(root, p, true, true)) do
+                table.insert(paths, vim.fn.simplify(fname))
+            end
         end
     end
 
