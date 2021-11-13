@@ -29,9 +29,9 @@ M.insert_ref = function(label, normal_mode, macroname)
 end
 
 --- Return all nodes for cross-reference definitions
-M.get_crossref_defs = function(bufnr)
+M.get_crossref_defs = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
-    local matches = ts_query.get_capture_matches(bufnr, '@latex.label', query_group)
+    local matches = ts_query.get_capture_matches(bufnr, '@label', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
     end
@@ -39,15 +39,52 @@ M.get_crossref_defs = function(bufnr)
     return matches
 end
 
-M.get_crossref_refs = function(bufnr)
+M.get_crossref_refs = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
-    local matches = ts_query.get_capture_matches(bufnr, '@latex.ref', query_group)
+    local matches = ts_query.get_capture_matches(bufnr, '@ref', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
     end
 
     return matches
 end
+
+--- Find equation labels using vim.treesitter directly (alternate)
+M.get_eq_labels = function(bufnr, root)
+    bufnr = bufnr or vim.fn.bufnr()
+    local matches = ts_query.get_capture_matches(bufnr, '@eq-label', query_group, root)
+    for _, m in ipairs(matches) do
+        m.bufnr = bufnr
+    end
+    return matches
+end
+
+--- Find equation labels using vim.treesitter directly (alternate)
+--
+-- Differs from the main implementation in that it:
+--   - supports metadata from vim.treesitter
+--   - allows searching a subset of the document
+M.get_eq_labels_alt = function(bufnr, root, startrow, endrow)
+    bufnr = bufnr or vim.fn.bufnr()
+    root = root or vim.treesitter.get_parser(bufnr, lang):trees()[1]:root()
+    local query = vim.treesitter.get_query(lang, query_group)
+    -- Find out the capture id for eq-label
+    local cap_id
+    for k, v in pairs(query.captures) do
+        if v == "eq-label" then
+            cap_id = k
+            break
+        end
+    end
+    local eqlabels = {}
+    for id, node, meta in query:iter_captures(root, 1, startrow, endrow) do
+        if id == cap_id then
+            table.insert(eqlabels, {bufnr=bufnr, node=node, metadata=meta})
+        end
+    end
+    return eqlabels
+end
+
 
 -- Make a list of all the bibtex entries in bibliographies
 function M.get_citations(bufnr)
