@@ -36,6 +36,15 @@ end
 
 local M = {}
 
+M._data = {}
+
+local function get_data(bufnr)
+    if not M._data[bufnr] then 
+        M._data[bufnr] = {}
+    end
+    return M._data[bufnr]
+end
+
 M.has_docclass = has_docclass
 M.test = main_from_latexmkrc
 
@@ -54,26 +63,28 @@ function M.set_document_root(bufnr)
     local thisfile = vim.fn.bufname(bufnr)
     thisfile = vim.fn.fnamemodify(thisfile, ":p")
 
+    local data = get_data(bufnr)
+
     -- Start with the directory of rootfile
     local thisdir = vim.fn.fnamemodify(thisfile, ":h")
     -- If \documentclass is in thisfile, then it should be the root
     if has_docclass(bufnr) then
-        vim.b.latex_root = thisdir
-        vim.b.latex_main = thisfile
+        data.root = thisdir
+        data.main = thisfile
     else
         -- Try looking for a latexmkrc
         local latexmkrc = vim.fn.findfile('.latexmkrc', '.;')
         if latexmkrc ~= "" then
-            vim.b.latex_root = vim.fn.fnamemodify(latexmkrc, ':p:h')
-            vim.b.latex_main = vim.b.latex_root .. '/' .. main_from_latexmkrc(latexmkrc)
+            data.root = vim.fn.fnamemodify(latexmkrc, ':p:h')
+            data.main = vim.b.latex_root .. '/' .. main_from_latexmkrc(latexmkrc)
         else
             -- If all else fails, just use the current file?
-            vim.b.latex_root = thisdir
-            vim.b.latex_main = thisfile
+            data.root = thisdir
+            data.main = thisfile
         end
     end
 
-    return vim.b.latex_root
+    return data.root
 end
 
 -- Find any bibtex files that are included in the document
@@ -81,7 +92,8 @@ function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
 
-    local root = vim.b.latex_root or M.set_document_root(bufnr)
+    local data = get_data(bufnr)
+    local root = data.root or M.set_document_root(bufnr)
     local paths = {}
     for _, m in ipairs(matches) do
         local p = utils.get_text_in_node(m.node, bufnr)
@@ -94,9 +106,35 @@ function M.set_bibliographies(bufnr)
         end
     end
 
-    vim.b.latex_bibs = paths
+    data.bibs = paths
     
     return paths
+end
+
+-- Find tex files in the .log
+function M.files_in_log(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+
+    data = get_data(bufnr)
+    local mainfile = data.main or M.set_document_root(bufnr) and data.main
+    local logfile = vim.fn.fnamemodify(mainfile, ':r') .. '.log'
+    print(logfile)
+    -- check if log file exists
+    local files = {}
+    if vim.fn.filereadable(logfile) == 1 then
+        nextLine = io.lines(logfile)
+        -- find the bit starting with *File List*
+        while not string.match(nextLine(), '%*File List') do end
+        -- pull all tex files until *******
+        for line in nextLine do
+            if string.match(line, ' %*+') then break end
+            file = string.match(line, '%w+%.tex')
+            if file then
+                table.insert(files, file)
+            end
+        end
+    end
+    return  files
 end
 
 return M
