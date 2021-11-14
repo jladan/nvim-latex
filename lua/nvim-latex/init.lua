@@ -155,4 +155,17 @@ function M.inputs_in_buf(bufnr)
     return files
 end
 
+-- Add the list of input files to the buffer's data
+function M.set_file_list(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+
+    local data = get_data(bufnr)
+    data.files = M.inputs_in_buf(bufnr)
+end
+
+-- TODO recursively add files and track their connections in the data structure
+-- If the LSP is working, then most of those files will already have assigned buffers
+-- It might be possible to use the LSP for this file management as well.
+
+
 return M
