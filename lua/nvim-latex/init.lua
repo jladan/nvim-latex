@@ -112,13 +112,15 @@ function M.set_bibliographies(bufnr)
 end
 
 -- Find tex files in the .log
+-- 
+-- The problem with this method is that we don't know where in the document the
+-- input file goes.
 function M.files_in_log(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
     data = get_data(bufnr)
     local mainfile = data.main or M.set_document_root(bufnr) and data.main
     local logfile = vim.fn.fnamemodify(mainfile, ':r') .. '.log'
-    print(logfile)
     -- check if log file exists
     local files = {}
     if vim.fn.filereadable(logfile) == 1 then
@@ -128,13 +130,29 @@ function M.files_in_log(bufnr)
         -- pull all tex files until *******
         for line in nextLine do
             if string.match(line, ' %*+') then break end
-            file = string.match(line, '%w+%.tex')
+            file = string.match(line, '[^%s]+%.tex')
             if file then
-                table.insert(files, file)
+                table.insert(files, vim.fn.fnamemodify(file, ':p'))
             end
         end
     end
     return  files
+end
+
+-- Get the input files in the buffer
+-- 
+-- Using a treesitter query will allow us to know there inside the file the
+-- input goes. This will be necessary for the outlines.
+function M.inputs_in_buf(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    
+    local inputs = ts_query.get_capture_matches(bufnr, '@input', 'outline')
+    local files = {}
+    for _, m in ipairs(inputs) do
+        table.insert(files, utils.get_text_in_node(m.path.node))
+    end
+
+    return files
 end
 
 return M
