@@ -45,8 +45,8 @@ local M = {}
 -- Contents:
 --      root    : the root directory of the project
 --      docfile : the .tex file that gets compiled
---      bibs    : all the bibtex files
---      files   : all the .tex files (just a list of files)
+--      bibs    : all the bibtex files as a set {<bibfile> = <bufnr>}
+--      files   : all the .tex files  as a set {<bibfile> = <bufnr>}
 M._docdata = {}
 --- Get the document data object for the document specified by docpath
 --  (create a new one if it doesn't exist)
@@ -128,7 +128,8 @@ function M.find_docfile(bufnr)
 end
 -- }}}
 
--- Find any bibtex files that are included in the document
+-- Bibliographies {{{
+-- Find any bibtex files that are included in the file, and add them to the document
 function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
@@ -147,11 +148,18 @@ function M.set_bibliographies(bufnr)
         end
     end
 
-    data.bibs = paths
+    -- add the bibtex files into the doc data
+    data.bibs = utils.file_set(paths)
+    if not data.doc.bibs then
+        data.doc.bibs = {}
+    end
+    utils.extend_set(data.doc.bibs, utils.file_set(paths))
     
     return paths
 end
+-- }}}
 
+-- Tex files {{{
 -- Find tex files in the .log
 -- 
 -- The problem with this method is that we don't know where in the document the
@@ -205,8 +213,9 @@ function M.set_file_list(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
     local data = get_filedata(bufnr)
-    data.files = M.inputs_in_buf(bufnr)
+    data.files = utils.file_set(M.inputs_in_buf(bufnr))
 end
+-- }}}
 
 --- Recursively set the document root and file list for each file referenced in the buffer
 --
