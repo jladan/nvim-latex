@@ -61,16 +61,18 @@ end
 -- The Data structure for tex file metadata.
 -- Metadata is tied to the buffer number : `M._filedata[<bufnr>]`
 -- Contents:
---      main    : the main document's metadata object
+--      doc     : the main document's metadata object
 --      bibs    : a list of bibtex files to look up citaitons in
 --      inputs  : {lineno : path} list `\input` macros in current file
 M._filedata = {}
 local function get_filedata(bufnr)
     if not M._filedata[bufnr] then 
         M._filedata[bufnr] = {}
+        M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
     end
     return M._filedata[bufnr]
 end
+M.get_filedata = get_filedata
 -- }}}
 
 -- setting the document file and root {{{
@@ -131,8 +133,8 @@ function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
 
-    local data = get_data(bufnr)
-    local root = data.root or M.set_document_root(bufnr)
+    local data = get_filedata(bufnr)
+    local root = data.doc.root or M.set_document_root(bufnr)
     local paths = {}
     for _, m in ipairs(matches) do
         local p = utils.get_text_in_node(m.node, bufnr)
@@ -157,7 +159,7 @@ end
 function M.files_in_log(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
-    data = get_data(bufnr)
+    data = get_filedata(bufnr)
     local mainfile = data.main or M.set_document_root(bufnr) and data.main
     local logfile = vim.fn.fnamemodify(mainfile, ':r') .. '.log'
     -- check if log file exists
@@ -202,7 +204,7 @@ end
 function M.set_file_list(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
-    local data = get_data(bufnr)
+    local data = get_filedata(bufnr)
     data.files = M.inputs_in_buf(bufnr)
 end
 
@@ -213,7 +215,7 @@ end
 function M.recurse_set_vals(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
-    local data = get_data(bufnr)
+    local data = get_filedata(bufnr)
     M.set_document_root(bufnr)
     M.set_bibliographies(bufnr)
     M.set_file_list(bufnr)
