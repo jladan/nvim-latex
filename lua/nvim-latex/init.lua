@@ -36,71 +36,95 @@ end
 
 local M = {}
 
--- XXX This new spec is not implemented yet
--- The Data structure for all document metadata.
--- Metadata is tied to the buffer number : {bufnr = {data}}
+-- Document file data {{{
+-- The "Main document's metadata object", `M._docdata[<main-file>]` is to be
+--      shared by all buffers from the same document. 
+-- <main-file> is the rootfile of the document with the extension stripped. To
+--      ensure uniqueness, the full path is used.
+--      E.g. "~/path/to/full-document.tex" -> "~/path/to/full-document"
 -- Contents:
---      main    : the main document's metadata object
---      bibs    : a list of bibtex files to look up citaitons in
---      inputs  : {lineno : path} list `\input` macros in current file
---  The "Main document's metadata object" should be shared by all buffers from
---  the same document.
---  Contents:
 --      root    : the root directory of the project
 --      docfile : the .tex file that gets compiled
 --      bibs    : all the bibtex files
 --      files   : all the .tex files (just a list of files)
--- TODO figure out how/where to store the Project's metadata, so that it's
---      easy to find for all files
-M._data = {}
-local function get_data(bufnr)
-    if not M._data[bufnr] then 
-        M._data[bufnr] = {}
+M._docdata = {}
+--- Get the document data object for the document specified by docpath
+--  (create a new one if it doesn't exist)
+local function get_docdata(docpath)
+    docpath = vim.fn.fnamemodify(docpath, ':~:r')
+    if not M._docdata[docpath] then 
+        M._docdata[docpath] = {}
     end
-    return M._data[bufnr]
+    return M._docdata[docpath]
 end
 
-M.has_docclass = has_docclass
-M.test = main_from_latexmkrc
+-- The Data structure for tex file metadata.
+-- Metadata is tied to the buffer number : `M._filedata[<bufnr>]`
+-- Contents:
+--      main    : the main document's metadata object
+--      bibs    : a list of bibtex files to look up citaitons in
+--      inputs  : {lineno : path} list `\input` macros in current file
+M._filedata = {}
+local function get_filedata(bufnr)
+    if not M._filedata[bufnr] then 
+        M._filedata[bufnr] = {}
+    end
+    return M._filedata[bufnr]
+end
+-- }}}
 
----- Set the name of the main latex document that's being edited
+-- setting the document file and root {{{
+---- Set the name and root directory of the main latex document that's being edited
 --
--- This will matter for multi-file documents.
--- Current strategy choose in order:
---  - the file if it has a documentclass declaration
---  - the first default file in the .latexmkrc
---  - the file as a last resort
---
--- TODO should this be a buffer variable or module-level?
+-- Also sets `M._filedata[bufnr] = M._docdata[<docfile>]` to link the doc data
+-- to the file data
 function M.set_document_root(bufnr)
-    -- Default to current buffer, and buffer filename
     bufnr = bufnr or vim.fn.bufnr()
+
+    local docfile = M.find_docfile(bufnr)
+    local docdata = get_docdata(docfile)
+    docdata.docfile = docfile
+    docdata.root = vim.fn.fnamemodify(docfile, ':h')
+
+    local fdata = get_filedata(bufnr)
+    fdata.doc = docdata
+
+    return docdata.root
+end
+
+function M.find_docfile(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    assert(vim.bo[bufnr].filetype == "tex", string.format("Buffer %d is not a tex file", bufnr))
+
     local thisfile = vim.fn.bufname(bufnr)
     thisfile = vim.fn.fnamemodify(thisfile, ":p")
 
-    local data = get_data(bufnr)
-
-    -- Start with the directory of rootfile
-    local thisdir = vim.fn.fnamemodify(thisfile, ":h")
+    -- Default to current file
+    local docfile = thisfile
     -- If \documentclass is in thisfile, then it should be the root
     if has_docclass(bufnr) then
-        data.root = thisdir
-        data.main = thisfile
+        docfile = thisfile
     else
         -- Try looking for a latexmkrc
+        local curbuf = vim.fn.bufnr() -- XXX findfile is relative to "current file"
+        vim.api.nvim_set_current_buf(bufnr)
         local latexmkrc = vim.fn.findfile('.latexmkrc', '.;')
         if latexmkrc ~= "" then
-            data.root = vim.fn.fnamemodify(latexmkrc, ':p:h')
-            data.main = data.root .. '/' .. main_from_latexmkrc(latexmkrc)
+            latexmkrc = vim.fn.fnamemodify(latexmkrc, ':p')
+            local main = main_from_latexmkrc(latexmkrc)
+            if main then
+                local path = vim.fn.fnamemodify(latexmkrc, ':p:h')
+                docfile = path .. '/' .. main
+            end
         else
             -- If all else fails, just use the current file?
-            data.root = thisdir
-            data.main = thisfile
+            docfile = thisfile
         end
+        vim.api.nvim_set_current_buf(curbuf)
     end
-
-    return data.root
+    return vim.fn.fnamemodify(docfile, ':~')
 end
+-- }}}
 
 -- Find any bibtex files that are included in the document
 function M.set_bibliographies(bufnr)
