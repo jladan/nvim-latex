@@ -198,7 +198,7 @@ function M.inputs_in_buf(bufnr)
     local inputs = ts_query.get_capture_matches(bufnr, '@input', 'outline')
     local files = {}
     for _, m in ipairs(inputs) do
-        local fname = utils.get_text_in_node(m.path.node)
+        local fname = utils.get_text_in_node(m.path.node, bufnr)
         if string.sub(fname, -4, -1) ~= '.tex' then
             fname = fname .. '.tex'
         end
@@ -208,29 +208,32 @@ function M.inputs_in_buf(bufnr)
     return files
 end
 
--- Add the list of input files to the buffer's data
-function M.set_file_list(bufnr)
-    bufnr = bufnr or vim.fn.bufnr()
-
-    local data = get_filedata(bufnr)
-    data.files = utils.file_set(M.inputs_in_buf(bufnr))
-end
 -- }}}
 
---- Recursively set the document root and file list for each file referenced in the buffer
---
--- Currently, each buffer has a different list of files.
--- TODO: share files among all buffers, and maybe have a list of subfiles
-function M.recurse_set_vals(bufnr)
+--- Set up the document data for the whole document
+function M.setup_document(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
-
-    local data = get_filedata(bufnr)
     M.set_document_root(bufnr)
+    local data = get_docdata(M.find_docfile(bufnr))
+
+    data.files = {}
+    M._set_files(vim.fn.bufnr(data.docfile, true))
+end
+
+function M._set_files(bufnr)
+    if vim.fn.bufloaded(bufnr) == 0 then
+        vim.fn.bufload(bufnr)
+    end
     M.set_bibliographies(bufnr)
-    M.set_file_list(bufnr)
-    for _, file in ipairs(data.files) do
-        fbuf = vim.fn.bufnr(file, true)
-        M.recurse_set_vals(fbuf)
+    local data = get_filedata(bufnr)
+    data.files = utils.file_set(M.inputs_in_buf(bufnr))
+    for file, bufnr in pairs(data.files) do
+        -- if the file is already in data.doc.files, then it has already been loaded
+        -- We skip loaded files to avoid infinite loops
+        if not data.doc.files[file] then
+            data.doc.files[file] = bufnr
+            M._set_files(bufnr)
+        end
     end
 end
 

@@ -2,7 +2,7 @@
 
 local ts_query = require("nvim-treesitter.query")
 local ts_parsers = require("nvim-treesitter.parsers")
-local ts_utils = require("nvim-treesitter.utils")
+local ts_utils = require("nvim-treesitter.ts_utils")
 
 local M = {}
 
