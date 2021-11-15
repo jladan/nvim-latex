@@ -36,8 +36,23 @@ end
 
 local M = {}
 
+-- XXX This new spec is not implemented yet
+-- The Data structure for all document metadata.
+-- Metadata is tied to the buffer number : {bufnr = {data}}
+-- Contents:
+--      main    : the main document's metadata object
+--      bibs    : a list of bibtex files to look up citaitons in
+--      inputs  : {lineno : path} list `\input` macros in current file
+--  The "Main document's metadata object" should be shared by all buffers from
+--  the same document.
+--  Contents:
+--      root    : the root directory of the project
+--      docfile : the .tex file that gets compiled
+--      bibs    : all the bibtex files
+--      files   : all the .tex files (just a list of files)
+-- TODO figure out how/where to store the Project's metadata, so that it's
+--      easy to find for all files
 M._data = {}
-
 local function get_data(bufnr)
     if not M._data[bufnr] then 
         M._data[bufnr] = {}
