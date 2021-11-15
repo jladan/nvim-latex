@@ -25,7 +25,7 @@ local function has_docclass(bufnr)
 end
 
 local function main_from_latexmkrc(rc)
-    local lines = vim.fn.readfile(rc)
+    local lines = vim.fn.readfile(vim.fn.fnamemodify(rc, ':p'))
     for _, line in ipairs(lines) do
         match = line:match( '@default_files.-[\'"](.-)[\'"]')
         if match then 
@@ -99,7 +99,7 @@ function M.find_docfile(bufnr)
     assert(vim.bo[bufnr].filetype == "tex", string.format("Buffer %d is not a tex file", bufnr))
 
     local thisfile = vim.fn.bufname(bufnr)
-    thisfile = vim.fn.fnamemodify(thisfile, ":p")
+    thisfile = vim.fn.fnamemodify(thisfile, ":~")
 
     -- Default to current file
     local docfile = thisfile
@@ -112,10 +112,10 @@ function M.find_docfile(bufnr)
         vim.api.nvim_set_current_buf(bufnr)
         local latexmkrc = vim.fn.findfile('.latexmkrc', '.;')
         if latexmkrc ~= "" then
-            latexmkrc = vim.fn.fnamemodify(latexmkrc, ':p')
+            latexmkrc = vim.fn.fnamemodify(latexmkrc, ':~')
             local main = main_from_latexmkrc(latexmkrc)
             if main then
-                local path = vim.fn.fnamemodify(latexmkrc, ':p:h')
+                local path = vim.fn.fnamemodify(latexmkrc, ':~:h')
                 docfile = path .. '/' .. main
             end
         else
@@ -181,7 +181,7 @@ function M.files_in_log(bufnr)
             if string.match(line, ' %*+') then break end
             file = string.match(line, '[^%s]+%.tex')
             if file then
-                table.insert(files, vim.fn.fnamemodify(file, ':p'))
+                table.insert(files, vim.fn.fnamemodify(file, ':~'))
             end
         end
     end
@@ -216,7 +216,8 @@ function M.setup_document(bufnr)
     M.set_document_root(bufnr)
     local data = get_docdata(M.find_docfile(bufnr))
 
-    data.files = {}
+    local bufnr = vim.fn.bufnr(data.docfile, true)
+    data.files = {data.docfile, bufnr}
     M._set_files(vim.fn.bufnr(data.docfile, true))
 end
 
