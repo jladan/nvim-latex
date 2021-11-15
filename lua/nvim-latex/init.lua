@@ -76,7 +76,7 @@ function M.set_document_root(bufnr)
         local latexmkrc = vim.fn.findfile('.latexmkrc', '.;')
         if latexmkrc ~= "" then
             data.root = vim.fn.fnamemodify(latexmkrc, ':p:h')
-            data.main = vim.b.latex_root .. '/' .. main_from_latexmkrc(latexmkrc)
+            data.main = data.root .. '/' .. main_from_latexmkrc(latexmkrc)
         else
             -- If all else fails, just use the current file?
             data.root = thisdir
@@ -149,7 +149,11 @@ function M.inputs_in_buf(bufnr)
     local inputs = ts_query.get_capture_matches(bufnr, '@input', 'outline')
     local files = {}
     for _, m in ipairs(inputs) do
-        table.insert(files, utils.get_text_in_node(m.path.node))
+        local fname = utils.get_text_in_node(m.path.node)
+        if string.sub(fname, -4, -1) ~= '.tex' then
+            fname = fname .. '.tex'
+        end
+        table.insert(files, fname)
     end
 
     return files
@@ -163,9 +167,22 @@ function M.set_file_list(bufnr)
     data.files = M.inputs_in_buf(bufnr)
 end
 
--- TODO recursively add files and track their connections in the data structure
--- If the LSP is working, then most of those files will already have assigned buffers
--- It might be possible to use the LSP for this file management as well.
+--- Recursively set the document root and file list for each file referenced in the buffer
+--
+-- Currently, each buffer has a different list of files.
+-- TODO: share files among all buffers, and maybe have a list of subfiles
+function M.recurse_set_vals(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+
+    local data = get_data(bufnr)
+    M.set_document_root(bufnr)
+    M.set_bibliographies(bufnr)
+    M.set_file_list(bufnr)
+    for _, file in ipairs(data.files) do
+        fbuf = vim.fn.bufnr(file, true)
+        M.recurse_set_vals(fbuf)
+    end
+end
 
 
 return M
