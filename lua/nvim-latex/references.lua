@@ -28,6 +28,7 @@ M.insert_ref = function(label, normal_mode, macroname)
     vim.api.nvim_put({refstring}, "c", after, true)
 end
 
+-- Cross-references {{{
 --- Return all nodes for cross-reference definitions
 M.get_crossref_defs = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
@@ -64,6 +65,10 @@ M.get_crossref_refs = function(bufnr, root)
     return matches
 end
 
+-- }}}
+
+-- Equation references {{{
+
 --- Find equation labels using vim.treesitter directly (alternate)
 M.get_eq_labels = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
@@ -73,6 +78,22 @@ M.get_eq_labels = function(bufnr, root)
     end
     return matches
 end
+
+-- Find all the label definitions inside a multi-file document
+M.eq_defs = function(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local fdata = doc._filedata[bufnr]
+    local matches = {}
+    if fdata and fdata.doc.files then
+        for file, bufnr in pairs(fdata.doc.files) do
+            utils.extend(matches, M.get_eq_labels(bufnr))
+        end
+    else
+        matches = M.get_eq_labels(bufnr)
+    end
+    return matches
+end
+
 
 --- Find equation labels using vim.treesitter directly (alternate)
 --
@@ -100,6 +121,9 @@ M.get_eq_labels_alt = function(bufnr, root, startrow, endrow)
     return eqlabels
 end
 
+-- }}}
+
+-- Citations {{{
 
 -- Make a list of all the bibtex entries in bibliographies
 function M.get_citations(bufnr)
@@ -117,5 +141,7 @@ function M.get_citations(bufnr)
     end
     return entries
 end
+
+-- }}}
 
 return M
