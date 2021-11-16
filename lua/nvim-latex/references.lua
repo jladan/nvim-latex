@@ -39,6 +39,21 @@ M.get_crossref_defs = function(bufnr, root)
     return matches
 end
 
+-- Find all the label definitions inside a multi-file document
+M.label_defs = function(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local fdata = doc._filedata[bufnr]
+    local matches = {}
+    if fdata and fdata.doc.files then
+        for file, bufnr in pairs(fdata.doc.files) do
+            utils.extend(matches, M.get_crossref_defs(bufnr))
+        end
+    else
+        matches = M.get_crossref_defs(bufnr)
+    end
+    return matches
+end
+
 M.get_crossref_refs = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@ref', query_group, root)
