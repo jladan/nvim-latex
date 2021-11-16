@@ -1,5 +1,8 @@
 ; A set of queries for outlining a latex document
 
+; Input files (for multi-file documents)
+((latex_input path: ((path) @input.path) ) @input)
+
 ; ENVIRONMENTS
 ((environment
     begin: (begin

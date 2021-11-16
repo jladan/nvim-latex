@@ -24,17 +24,21 @@ Insert a citation
 ## TODO / features
 
 - [/] Cross-references
-    - [X] Find and list all `\label{}`s in a document.
+    - [ ] Find cross-references in whole document.
+        - [X] Find and list all `\label{}`s in a file.
+        - [ ] pull labels, references, and citations from all files
     - [X] insert a reference from a menu 
         - [X] specific to sections and floats for `\ref`
         - [X] equation references with `\eqref`
         - [ ] sort by relevance
-            - [ ] prefer current document
+            - [ ] prefer current file
             - [ ] prefer reftype by context before (chapter, appendix, section, figure, table)
     - [ ] check for `\ref{}` with missing `\label{}`
     - [ ] navigate to label definition, or reference
 - [/] Citations
-    - [X] Pull citation keys from the `\bibliography` command (bibtex)
+    - [ ] Full document support
+        - [X] Pull citation keys from the `\bibliography` command (bibtex)
+        - [ ] find `\bibliography` for all files
     - [ ] Pull citation keys from `\bibitem`s in the document
     - [/] insert a citation from a menu
         - [X] insert selected citations with `\cite{}`
@@ -43,14 +47,10 @@ Insert a citation
     - [ ] list all missing citation keys
     - [ ] integrate with zotero
     - [ ] show preview of reference from bibtex
-- [/] Multi-file documents
+- [X] Multi-file documents
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
-    - [ ] track all related buffers, ideally in all buffers
-    - [/] pull labels, references, and citations from all files
-        - [X] get references, labels from current file
-        - [X] get citations from `\bibliography` of main file
-        - [ ] find `\bibliography` if not in main file
+    - [X] track all related buffers, ideally in all buffers
 - [/] Outlining
     - [X] Find all chapters, sections, subsections, etc
     - [X] Find all figures with captions and labels

@@ -2,7 +2,7 @@
 
 local ts_query = require("nvim-treesitter.query")
 local ts_parsers = require("nvim-treesitter.parsers")
-local ts_utils = require("nvim-treesitter.utils")
+local ts_utils = require("nvim-treesitter.ts_utils")
 
 local M = {}
 
@@ -29,6 +29,42 @@ M.get_text_in_node = function(node, bufnr)
     text[1] = text[1]:sub(start_idx)
 
     return table.concat(text, '\n')
+end
+
+-- Extend a list with values from a second list
+M.extend = function(a, b)
+    for _, x in ipairs(b) do
+        table.insert(a, x)
+    end
+end
+
+--- Keep only the first instance of an item in a list
+M.unique = function(list)
+    local set = {}
+    local keys = {}
+    for _, x in ipairs(list) do
+        if not keys[x] then
+            keys[x] = true
+            table.insert(set, x)
+        end
+    end
+    return set
+end
+
+--- Take a list of filenames, and convert it to a set {filename = <bufnr>}
+M.file_set = function(filelist)
+    local fset = {}
+    for _, f in ipairs(filelist) do
+        fset[f] = vim.fn.bufnr(f, true)
+    end
+    return fset
+end
+
+--- Extend a set with a second set (writing over previous values)
+M.extend_set = function(a, b)
+    for k, v in pairs(b) do
+        a[k] = v
+    end
 end
 
 return M
