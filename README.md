@@ -5,7 +5,9 @@ provide an outline of the whole document.
 
 # Usage
 
-In order to use full functionality, the setup function has to be run first:
+In order to use full functionality, the setup function has to be run first, but
+due to the fact that the setup function loads buffers in the background, it
+can't be used in `ftplugin/tex.vim`.
 
 ```viml
 :lua require("nvim-latex").setup_document()
@@ -37,7 +39,7 @@ Insert a citation
 - [/] Cross-references
     - [ ] Find cross-references in whole document.
         - [X] Find and list all `\label{}`s in a file.
-        - [ ] pull labels, references, and citations from all files
+        - [X] pull labels, references, and citations from all files
     - [X] insert a reference from a menu 
         - [X] specific to sections and floats for `\ref`
         - [X] equation references with `\eqref`
@@ -47,9 +49,9 @@ Insert a citation
     - [ ] check for `\ref{}` with missing `\label{}`
     - [ ] navigate to label definition, or reference
 - [/] Citations
-    - [ ] Full document support
+    - [X] Full document support
         - [X] Pull citation keys from the `\bibliography` command (bibtex)
-        - [ ] find `\bibliography` for all files
+        - [X] find `\bibliography` for all files
     - [ ] Pull citation keys from `\bibitem`s in the document
     - [/] insert a citation from a menu
         - [X] insert selected citations with `\cite{}`
