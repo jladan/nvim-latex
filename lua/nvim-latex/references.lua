@@ -128,9 +128,14 @@ end
 -- Make a list of all the bibtex entries in bibliographies
 function M.get_citations(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    -- get the document data for the buffer
+    local fdata = doc._filedata[bufnr]
+    if not fdata then
+        return
+    end
     local entries = {}
-    for _, bib in ipairs(vim.b.latex_bibs or doc.set_bibliographies(bufnr)) do
-        bibbuf = vim.fn.bufnr(bib, true)
+    for file, _ in pairs(fdata.doc.bibs or {}) do
+        bibbuf = vim.fn.bufnr(file, true)
         -- The buffer has to be loaded for nvim-treesitter
         vim.fn.bufload(bibbuf)
         local matches = ts_query.get_capture_matches(bibbuf, '@entry.key', "references")
