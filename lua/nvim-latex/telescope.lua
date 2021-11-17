@@ -14,7 +14,7 @@ local M = {}
 -- TODO fix up with whatever extra info I need.
 local make_entry_from_ref = function(entry)
     local node = entry.node
-    local text = utils.get_text_in_node(node, entry.bufnr)
+    local text = entry.label
 
     return {
         value = node,
@@ -69,7 +69,7 @@ end
 M.cross_reference = function(opts)
     -- TODO I'll need to be smarter about what buffer to use
     -- e.g. if there are multiple files for one document
-    local ref_list = references.get_crossref_defs(vim.fn.bufnr())
+    local ref_list = references.label_defs(vim.fn.bufnr())
 
     ref_picker(ref_list, references.insert_ref, "ref", opts)
 end
@@ -77,7 +77,7 @@ end
 -- List all references, and throw in a \eqref{}
 M.eq_reference = function(opts)
     -- TOOD select only equation labels
-    local ref_list = references.get_crossref_defs(vim.fn.bufnr())
+    local ref_list = references.eq_defs(vim.fn.bufnr())
 
     ref_picker(ref_list, references.insert_ref, "eqref", opts)
 end
@@ -89,7 +89,7 @@ M.citation = function(opts)
     -- e.g. if there are multiple files for one document
     local ref_list = references.get_citations(vim.fn.bufnr())
 
-    ref_picker(ref_list, references.insert_citation, "cite", opts)
+    ref_picker(ref_list, references.insert_ref, "cite", opts)
 end
 
 return M

@@ -28,14 +28,31 @@ M.insert_ref = function(label, normal_mode, macroname)
     vim.api.nvim_put({refstring}, "c", after, true)
 end
 
+-- Cross-references {{{
 --- Return all nodes for cross-reference definitions
 M.get_crossref_defs = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@label', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
+        m.label = utils.get_text_in_node(m.node, bufnr)
     end
     
+    return matches
+end
+
+-- Find all the label definitions inside a multi-file document
+M.label_defs = function(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local fdata = doc._filedata[bufnr]
+    local matches = {}
+    if fdata and fdata.doc.files then
+        for file, bufnr in pairs(fdata.doc.files) do
+            utils.extend(matches, M.get_crossref_defs(bufnr))
+        end
+    else
+        matches = M.get_crossref_defs(bufnr)
+    end
     return matches
 end
 
@@ -49,15 +66,36 @@ M.get_crossref_refs = function(bufnr, root)
     return matches
 end
 
+-- }}}
+
+-- Equation references {{{
+
 --- Find equation labels using vim.treesitter directly (alternate)
 M.get_eq_labels = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@eq-label', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
+        m.label = utils.get_text_in_node(m.node, bufnr)
     end
     return matches
 end
+
+-- Find all the label definitions inside a multi-file document
+M.eq_defs = function(bufnr)
+    bufnr = bufnr or vim.fn.bufnr()
+    local fdata = doc._filedata[bufnr]
+    local matches = {}
+    if fdata and fdata.doc.files then
+        for file, bufnr in pairs(fdata.doc.files) do
+            utils.extend(matches, M.get_eq_labels(bufnr))
+        end
+    else
+        matches = M.get_eq_labels(bufnr)
+    end
+    return matches
+end
+
 
 --- Find equation labels using vim.treesitter directly (alternate)
 --
@@ -85,22 +123,33 @@ M.get_eq_labels_alt = function(bufnr, root, startrow, endrow)
     return eqlabels
 end
 
+-- }}}
+
+-- Citations {{{
 
 -- Make a list of all the bibtex entries in bibliographies
 function M.get_citations(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    -- get the document data for the buffer
+    local fdata = doc._filedata[bufnr]
+    if not fdata then
+        return
+    end
     local entries = {}
-    for _, bib in ipairs(vim.b.latex_bibs or doc.set_bibliographies(bufnr)) do
-        bibbuf = vim.fn.bufnr(bib, true)
+    for file, _ in pairs(fdata.doc.bibs or {}) do
+        bibbuf = vim.fn.bufnr(file, true)
         -- The buffer has to be loaded for nvim-treesitter
         vim.fn.bufload(bibbuf)
-        local matches = ts_query.get_capture_matches(bibbuf, '@entry.key', "references")
+        local matches = ts_query.get_capture_matches(bibbuf, '@entry', "references")
         for _, m in ipairs(matches) do
             m.bufnr = bibbuf
+            m.label = utils.get_text_in_node(m.key.node, bibbuf)
             table.insert(entries, m)
         end
     end
     return entries
 end
+
+-- }}}
 
 return M
