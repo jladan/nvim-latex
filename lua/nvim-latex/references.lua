@@ -35,6 +35,7 @@ M.get_crossref_defs = function(bufnr, root)
     local matches = ts_query.get_capture_matches(bufnr, '@label', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
+        m.label = utils.get_text_in_node(m.node, bufnr)
     end
     
     return matches
@@ -75,6 +76,7 @@ M.get_eq_labels = function(bufnr, root)
     local matches = ts_query.get_capture_matches(bufnr, '@eq-label', query_group, root)
     for _, m in ipairs(matches) do
         m.bufnr = bufnr
+        m.label = utils.get_text_in_node(m.node, bufnr)
     end
     return matches
 end
@@ -138,9 +140,10 @@ function M.get_citations(bufnr)
         bibbuf = vim.fn.bufnr(file, true)
         -- The buffer has to be loaded for nvim-treesitter
         vim.fn.bufload(bibbuf)
-        local matches = ts_query.get_capture_matches(bibbuf, '@entry.key', "references")
+        local matches = ts_query.get_capture_matches(bibbuf, '@entry', "references")
         for _, m in ipairs(matches) do
             m.bufnr = bibbuf
+            m.label = utils.get_text_in_node(m.key.node, bibbuf)
             table.insert(entries, m)
         end
     end

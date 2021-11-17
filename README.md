@@ -5,6 +5,17 @@ provide an outline of the whole document.
 
 # Usage
 
+In order to use full functionality, the setup function has to be run first:
+
+```viml
+:lua require("nvim-latex").setup_document()
+```
+
+The function `setup_document(bufnr)` tracks all the `.tex` and `.bib` files in
+the current document. If a substantial change is made (adding an `\input{}` or
+`\bibliography{}`, then the function needs to be called  again to see the
+changes in citations or the outline.
+
 Insert a cross-reference:
 
 ```viml
