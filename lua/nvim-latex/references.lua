@@ -157,7 +157,7 @@ function M.zotCite()
     local result = vim.fn.system({"curl", "-s", api_call})
     local cite
     if result ~= "" then
-        cite = vim.fn.json_decode(result)[1]
+        cite = vim.fn.json_decode(result)
     end
     return cite
 end
