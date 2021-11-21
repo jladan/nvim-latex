@@ -217,6 +217,7 @@ function M.inputs_in_buf(bufnr)
         table.insert(files, fname)
     end
 
+    log.debug("*inputs_in_buf* returning ", files)
     return files
 end
 
@@ -231,14 +232,12 @@ function M.setup_document(bufnr)
     local bufnr = vim.fn.bufnr(docdata.docfile, true)
     docdata.files = {}
     docdata.files[docdata.docfile] = bufnr
-    M._set_files(vim.fn.bufnr(docdata.docfile, true), docdata)
+    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
 end
 
 function M._set_files(bufnr, docdata)
-    if vim.fn.bufloaded(bufnr) == 0 then
-        vim.fn.bufload(bufnr)
-    end
     log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
+    vim.fn.bufload(bufnr)
     -- The create the data for current buffer, and assign the document to it
     local data = get_filedata(bufnr)
     data.doc = docdata
