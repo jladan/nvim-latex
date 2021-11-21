@@ -150,6 +150,19 @@ function M.get_citations(bufnr)
     return entries
 end
 
+--- Farm out the citation search to zotero
+function M.zotCite()
+    local format = 'json'
+    local api_call = 'http://127.0.0.1:23119/better-bibtex/cayw?format='..format
+    local result = vim.fn.system({"curl", "-s", api_call})
+    local cite
+    if result ~= "" then
+        cite = vim.fn.json_decode(result)[1]
+    end
+    return cite
+end
+
+
 -- }}}
 
 return M
