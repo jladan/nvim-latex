@@ -3,11 +3,14 @@
 --
 -- A few tools to make working with latex documents easier in neovim
 
--- TODO decide on what if anything goes in the main module
-
 local ts_query = require("nvim-treesitter.query")
 local utils = require("nvim-latex.utils")
 
+local log = require("nvim-latex.log")
+
+-- file introspection {{{
+
+-- Check if the current document has a \documentclass macro
 local function has_docclass(bufnr)
     -- Store the current location before searching
     local pos = vim.fn.getcurpos()
@@ -24,6 +27,7 @@ local function has_docclass(bufnr)
     return found > 0
 end
 
+--- Find the default file in a latexmkrc
 local function main_from_latexmkrc(rc)
     local lines = vim.fn.readfile(vim.fn.fnamemodify(rc, ':p'))
     for _, line in ipairs(lines) do
@@ -33,6 +37,24 @@ local function main_from_latexmkrc(rc)
         end
     end
 end
+
+--- My own get_captures function
+--
+-- This is necessary, because nvim-treesitter won't work if the filetype isn't
+-- set.
+local function get_captures(bufnr, group, capture)
+    local query = vim.treesitter.get_query('latex', group)
+    local root = vim.treesitter.get_parser(bufnr, 'latex'):trees()[1]:root()
+    local matches = {}
+    for id, node, meta in query:iter_captures(root, bufnr) do
+        if query.captures[id] == capture then
+            table.insert(matches, node)
+        end
+    end
+    return matches
+end
+
+-- }}}
 
 local M = {}
 
@@ -68,7 +90,7 @@ M._filedata = {}
 local function get_filedata(bufnr)
     if not M._filedata[bufnr] then 
         M._filedata[bufnr] = {}
-        M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
+        -- M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
     end
     return M._filedata[bufnr]
 end
@@ -82,21 +104,21 @@ M.get_filedata = get_filedata
 -- to the file data
 function M.set_document_root(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    log.debug("Called 'set_doc_root' on " .. vim.fn.bufname(bufnr))
 
     local docfile = M.find_docfile(bufnr)
     local docdata = get_docdata(docfile)
     docdata.docfile = docfile
     docdata.root = vim.fn.fnamemodify(docfile, ':h')
 
-    local fdata = get_filedata(bufnr)
-    fdata.doc = docdata
-
-    return docdata.root
+    log.debug("*set_doc_root* returning " .. docdata.root)
+    return docdata
 end
 
 function M.find_docfile(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
-    assert(vim.bo[bufnr].filetype == "tex", string.format("Buffer %d is not a tex file", bufnr))
+    log.debug("Called 'find_docfile' on " .. vim.fn.bufname(bufnr))
+    --assert(vim.bo[bufnr].filetype == "tex", string.format("Buffer %d is not a tex file", bufnr))
 
     local thisfile = vim.fn.bufname(bufnr)
     thisfile = vim.fn.fnamemodify(thisfile, ":~")
@@ -105,16 +127,20 @@ function M.find_docfile(bufnr)
     local docfile = thisfile
     -- If \documentclass is in thisfile, then it should be the root
     if has_docclass(bufnr) then
+        log.info("*find_docfile* documentclass found in " .. thisfile)
         docfile = thisfile
     else
+        log.debug("*find_docfile* looking for latexmkrc")
         -- Try looking for a latexmkrc
         local curbuf = vim.fn.bufnr() -- XXX findfile is relative to "current file"
         vim.api.nvim_set_current_buf(bufnr)
         local latexmkrc = vim.fn.findfile('.latexmkrc', '.;')
         if latexmkrc ~= "" then
+            log.info("*find_docfile* found latexmkrc*")
             latexmkrc = vim.fn.fnamemodify(latexmkrc, ':~')
             local main = main_from_latexmkrc(latexmkrc)
             if main then
+                log.info("*find_docfile* from latexmkrc, found " .. main)
                 local path = vim.fn.fnamemodify(latexmkrc, ':~:h')
                 docfile = path .. '/' .. main
             end
@@ -124,6 +150,7 @@ function M.find_docfile(bufnr)
         end
         vim.api.nvim_set_current_buf(curbuf)
     end
+    log.debug("*find_docfile* returning " .. vim.fn.fnamemodify(docfile, ':~'))
     return vim.fn.fnamemodify(docfile, ':~')
 end
 -- }}}
@@ -132,15 +159,16 @@ end
 -- Find any bibtex files that are included in the file, and add them to the document
 function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
-    local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
+    log.debug("Called 'set_bibs' on " .. vim.fn.bufname(bufnr))
+    local matches = get_captures(bufnr, 'references', 'bibliography.path')
 
     local data = get_filedata(bufnr)
-    local root = data.doc.root or M.set_document_root(bufnr)
+    local root = data.doc.root
     local paths = {}
     -- XXX There should only actually be one match, but this works anyway
     -- it may be safer than just picking the first
-    for _, m in ipairs(matches) do
-        local bibfiles = utils.get_text_in_node(m.node, bufnr)
+    for _, node in ipairs(matches) do
+        local bibfiles = utils.get_text_in_node(node, bufnr)
         -- multiple bibtex files are in a comma-delimited list
         for _, p in ipairs(vim.fn.split(bibfiles, ",\\s*")) do
             if string.lower(string.sub(p, -4, -1)) ~= ".bib" then
@@ -198,49 +226,61 @@ end
 -- input goes. This will be necessary for the outlines.
 function M.inputs_in_buf(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    log.debug("Called 'inputs_in_buf' on " .. vim.fn.bufname(bufnr))
     
-    local inputs = ts_query.get_capture_matches(bufnr, '@input', 'outline')
+    local inputs = get_captures(bufnr, 'outline', 'input.path')
     local files = {}
-    for _, m in ipairs(inputs) do
-        local fname = utils.get_text_in_node(m.path.node, bufnr)
+    for _, node in ipairs(inputs) do
+        local fname = utils.get_text_in_node(node, bufnr)
         if string.sub(fname, -4, -1) ~= '.tex' then
             fname = fname .. '.tex'
         end
         table.insert(files, fname)
     end
 
+    log.debug("*inputs_in_buf* returning ", files)
     return files
 end
 
 -- }}}
 
+-- Document setup {{{
+
 --- Set up the document data for the whole document
 function M.setup_document(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
-    M.set_document_root(bufnr)
-    local data = get_docdata(M.find_docfile(bufnr))
+    log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
+    local docdata = M.set_document_root(bufnr)
 
-    local bufnr = vim.fn.bufnr(data.docfile, true)
-    data.files = {data.docfile, bufnr}
-    M._set_files(vim.fn.bufnr(data.docfile, true))
+    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
+    docdata.files = {}
+    docdata.files[docdata.docfile] = bufnr
+    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
 end
 
-function M._set_files(bufnr)
-    if vim.fn.bufloaded(bufnr) == 0 then
-        vim.fn.bufload(bufnr)
-    end
-    M.set_bibliographies(bufnr)
+function M._set_files(bufnr, docdata)
+    log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
+    vim.fn.bufload(bufnr)
+    log.debug('file loaded in ', bufnr)
+    log.debug("*_set_files* first line of file: ", vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
+    -- The create the data for current buffer, and assign the document to it
     local data = get_filedata(bufnr)
+    data.doc = docdata
+    -- Begin setting files
+    M.set_bibliographies(bufnr)
     data.files = utils.file_set(M.inputs_in_buf(bufnr))
     for file, bufnr in pairs(data.files) do
         -- if the file is already in data.doc.files, then it has already been loaded
         -- We skip loaded files to avoid infinite loops
         if not data.doc.files[file] then
             data.doc.files[file] = bufnr
-            M._set_files(bufnr)
+            M._set_files(bufnr, docdata)
         end
     end
+    log.debug("*_set_files* returning for " .. vim.fn.bufname(bufnr))
 end
+
+-- }}}
 
 
 return M

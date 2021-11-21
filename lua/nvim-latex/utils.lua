@@ -55,7 +55,7 @@ end
 M.file_set = function(filelist)
     local fset = {}
     for _, f in ipairs(filelist) do
-        fset[f] = vim.fn.bufnr(f, true)
+        fset[f] = vim.fn.bufnr(vim.fn.expand(f), true)
     end
     return fset
 end

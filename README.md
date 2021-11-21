@@ -5,9 +5,8 @@ provide an outline of the whole document.
 
 # Usage
 
-In order to use full functionality, the setup function has to be run first, but
-due to the fact that the setup function loads buffers in the background, it
-can't be used in `ftplugin/tex.vim`.
+In order to use full functionality, the setup function has to be run first. 
+This can be placed in `ftplugin/tex.vim`:
 
 ```viml
 :lua require("nvim-latex").setup_document()
@@ -61,6 +60,7 @@ Insert a citation
     - [ ] integrate with zotero
     - [ ] show preview of reference from bibtex
 - [X] Multi-file documents
+    - [ ] perform the document scan asynchronously
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
     - [X] track all related buffers, ideally in all buffers
