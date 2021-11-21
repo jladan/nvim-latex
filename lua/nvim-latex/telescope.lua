@@ -85,10 +85,26 @@ end
 -- List all references, and throw in a \ref{}
 --   TODO navigate to definition
 M.citation = function(opts)
-    -- TODO I'll need to be smarter about what buffer to use
-    -- e.g. if there are multiple files for one document
+    opts = opts or {}
     local ref_list = references.get_citations(vim.fn.bufnr())
+    local keepinsert = opts.keepinsert or false
 
+    local zCite = function(prompt_bufnr)
+        actions._close(prompt_bufnr, keepinsert)
+        local cite = references.zotCite()
+        if cite then
+            keys = {}
+            for _, c in ipairs(cite) do
+                table.insert(keys, c.citekey)
+            end
+            references.insert_ref(keys, not keepinsert, "cite")
+        end
+    end
+    opts.attach_mappings = function(prompt_bufnr, map)
+        map("i", "<c-z>", zCite)
+        map("n", "<c-z>", zCite)
+        return true
+    end
     ref_picker(ref_list, references.insert_ref, "cite", opts)
 end
 
