@@ -8,6 +8,9 @@ local utils = require("nvim-latex.utils")
 
 local log = require("nvim-latex.log")
 
+-- file introspection {{{
+
+-- Check if the current document has a \documentclass macro
 local function has_docclass(bufnr)
     -- Store the current location before searching
     local pos = vim.fn.getcurpos()
@@ -24,6 +27,7 @@ local function has_docclass(bufnr)
     return found > 0
 end
 
+--- Find the default file in a latexmkrc
 local function main_from_latexmkrc(rc)
     local lines = vim.fn.readfile(vim.fn.fnamemodify(rc, ':p'))
     for _, line in ipairs(lines) do
@@ -34,6 +38,23 @@ local function main_from_latexmkrc(rc)
     end
 end
 
+--- My own get_captures function
+--
+-- This is necessary, because nvim-treesitter won't work if the filetype isn't
+-- set.
+local function get_captures(bufnr, group, capture)
+    local query = vim.treesitter.get_query('latex', group)
+    local root = vim.treesitter.get_parser(bufnr, 'latex'):trees()[1]:root()
+    local matches = {}
+    for id, node, meta in query:iter_captures(root, bufnr) do
+        if query.captures[id] == capture then
+            table.insert(matches, node)
+        end
+    end
+    return matches
+end
+
+-- }}}
 
 local M = {}
 
@@ -129,7 +150,7 @@ function M.find_docfile(bufnr)
         end
         vim.api.nvim_set_current_buf(curbuf)
     end
-    log.debug("*find_docfile* returning " .. docfile)
+    log.debug("*find_docfile* returning " .. vim.fn.fnamemodify(docfile, ':~'))
     return vim.fn.fnamemodify(docfile, ':~')
 end
 -- }}}
@@ -139,15 +160,15 @@ end
 function M.set_bibliographies(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'set_bibs' on " .. vim.fn.bufname(bufnr))
-    local matches = ts_query.get_capture_matches(bufnr, '@bibliography.path', "references")
+    local matches = get_captures(bufnr, 'references', 'bibliography.path')
 
     local data = get_filedata(bufnr)
     local root = data.doc.root
     local paths = {}
     -- XXX There should only actually be one match, but this works anyway
     -- it may be safer than just picking the first
-    for _, m in ipairs(matches) do
-        local bibfiles = utils.get_text_in_node(m.node, bufnr)
+    for _, node in ipairs(matches) do
+        local bibfiles = utils.get_text_in_node(node, bufnr)
         -- multiple bibtex files are in a comma-delimited list
         for _, p in ipairs(vim.fn.split(bibfiles, ",\\s*")) do
             if string.lower(string.sub(p, -4, -1)) ~= ".bib" then
@@ -207,10 +228,10 @@ function M.inputs_in_buf(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'inputs_in_buf' on " .. vim.fn.bufname(bufnr))
     
-    local inputs = ts_query.get_capture_matches(bufnr, '@input', 'outline')
+    local inputs = get_captures(bufnr, 'outline', 'input.path')
     local files = {}
-    for _, m in ipairs(inputs) do
-        local fname = utils.get_text_in_node(m.path.node, bufnr)
+    for _, node in ipairs(inputs) do
+        local fname = utils.get_text_in_node(node, bufnr)
         if string.sub(fname, -4, -1) ~= '.tex' then
             fname = fname .. '.tex'
         end
@@ -223,13 +244,15 @@ end
 
 -- }}}
 
+-- Document setup {{{
+
 --- Set up the document data for the whole document
 function M.setup_document(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
     local docdata = M.set_document_root(bufnr)
 
-    local bufnr = vim.fn.bufnr(docdata.docfile, true)
+    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
     docdata.files = {}
     docdata.files[docdata.docfile] = bufnr
     M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
@@ -238,6 +261,8 @@ end
 function M._set_files(bufnr, docdata)
     log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
     vim.fn.bufload(bufnr)
+    log.debug('file loaded in ', bufnr)
+    log.debug("*_set_files* first line of file: ", vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
     -- The create the data for current buffer, and assign the document to it
     local data = get_filedata(bufnr)
     data.doc = docdata
@@ -254,6 +279,8 @@ function M._set_files(bufnr, docdata)
     end
     log.debug("*_set_files* returning for " .. vim.fn.bufname(bufnr))
 end
+
+-- }}}
 
 
 return M
