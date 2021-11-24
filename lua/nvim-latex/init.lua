@@ -59,6 +59,7 @@ end
 local M = {}
 
 -- Document file data {{{
+
 -- The "Main document's metadata object", `M._docdata[<main-file>]` is to be
 --      shared by all buffers from the same document. 
 -- <main-file> is the rootfile of the document with the extension stripped. To
@@ -72,7 +73,7 @@ local M = {}
 M._docdata = {}
 --- Get the document data object for the document specified by docpath
 --  (create a new one if it doesn't exist)
-local function get_docdata(docpath)
+function M.get_docdata(docpath)
     docpath = vim.fn.fnamemodify(docpath, ':~:r')
     if not M._docdata[docpath] then 
         M._docdata[docpath] = {}
@@ -87,14 +88,14 @@ end
 --      bibs    : a list of bibtex files to look up citaitons in
 --      inputs  : {lineno : path} list `\input` macros in current file
 M._filedata = {}
-local function get_filedata(bufnr)
+function M.get_filedata(bufnr)
     if not M._filedata[bufnr] then 
         M._filedata[bufnr] = {}
         -- M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
     end
     return M._filedata[bufnr]
 end
-M.get_filedata = get_filedata
+
 -- }}}
 
 -- setting the document file and root {{{
@@ -107,7 +108,7 @@ function M.set_document_root(bufnr)
     log.debug("Called 'set_doc_root' on " .. vim.fn.bufname(bufnr))
 
     local docfile = M.find_docfile(bufnr)
-    local docdata = get_docdata(docfile)
+    local docdata = M.get_docdata(docfile)
     docdata.docfile = docfile
     docdata.root = vim.fn.fnamemodify(docfile, ':h')
 
@@ -162,7 +163,7 @@ function M.set_bibliographies(bufnr)
     log.debug("Called 'set_bibs' on " .. vim.fn.bufname(bufnr))
     local matches = get_captures(bufnr, 'references', 'bibliography.path')
 
-    local data = get_filedata(bufnr)
+    local data = M.get_filedata(bufnr)
     local root = data.doc.root
     local paths = {}
     -- XXX There should only actually be one match, but this works anyway
@@ -199,7 +200,7 @@ end
 function M.files_in_log(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
 
-    data = get_filedata(bufnr)
+    data = M.get_filedata(bufnr)
     local mainfile = data.main or M.set_document_root(bufnr) and data.main
     local logfile = vim.fn.fnamemodify(mainfile, ':r') .. '.log'
     -- check if log file exists
@@ -264,7 +265,7 @@ function M._set_files(bufnr, docdata)
     log.debug('file loaded in ', bufnr)
     log.debug("*_set_files* first line of file: ", vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
     -- The create the data for current buffer, and assign the document to it
-    local data = get_filedata(bufnr)
+    local data = M.get_filedata(bufnr)
     data.doc = docdata
     -- Begin setting files
     M.set_bibliographies(bufnr)
