@@ -29,15 +29,30 @@ function DocNode:range()
     return self.node:range()
 end
 
+function DocNode:covers(srow, scol, erow, ecol)
+    local dsrow, dscol, derow, decol = self:range()
+    local start, last
+    -- self starts before the starting position
+    start = dsrow < srow or (dsrow == srow and dscol <= scol)
+    if erow and ecol then
+        -- self ends after the ending position
+        last = derow > erow or (derow == erow and decol >= ecol)
+    else
+        -- self ends after the starting position
+        last = derow > srow or (derow == srow and decol >= scol)
+    end
+    return start and last
+end
+
 --- Check if the docNode b should be a child of docNode a
 function DocNode:is_in(dnode)
     --- Check if range b is a subset of range a
-    asrow, ascol, aerow, aecol = dnode:range()
-    bsrow, bscol, berow, becol = self:range()
+    local asrow, ascol, aerow, aecol = dnode:range()
+    local bsrow, bscol, berow, becol = self:range()
     -- dnode starts before self
-    start = asrow < bsrow or (asrow == bsrow and ascol <= bscol)
+    local start = asrow < bsrow or (asrow == bsrow and ascol <= bscol)
     -- dnode ends after self
-    last = aerow > berow or (aerow == berow and aecol >= becol)
+    local last = aerow > berow or (aerow == berow and aecol >= becol)
     return start and last
 end
 
