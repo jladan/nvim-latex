@@ -1,42 +1,65 @@
--- Create an outline of a latex document
+-- DOM for latex to be used by outlining functions
 
-local ts_query = require("nvim-treesitter.query")
 local utils = require("nvim-latex.utils")
 
-local M = {}
+lang = 'latex'
+qgroup = 'outline'
 
--- This module is just for latex
-local lang = "latex"
-local qgroup = "outline"
+-- Meta class
+local DocNode = {}
+DocNode.__index = DocNode
 
--- The DOM for the latex document
-M._doc_tree = { capture = "root", children = {}, }
+-- @class DocNode
+-- DocNode is node in a latex document to track document elements. It is a
+-- fairly thin wrapper around a treesitter.node, but keeps track of the
+-- children, and some related metadata.
+function DocNode:new(capture, node)
+    return setmetatable({
+        capture = capture or "",
+        node = node,
+        children = {}
+    }, self)
+end
 
---- Check if range b is a subset of range a
-local function range_in_range(b, a)
-    -- starting point
-    start = a[1] < b[1] or (a[1] == b[1] and a[2] <= b[2])
-    -- ending point
-    last = a[3] > b[3] or (a[3] == b[3] and a[4] >= b[4])
-    return start and last
+function DocNode:addChild(dnode)
+    table.insert(self.children, dnode)
+end
+
+function DocNode:range()
+    return self.node:range()
 end
 
 --- Check if the docNode b should be a child of docNode a
-local function is_child(a, b)
-    -- Checks if b is the child of a
-    if b then
-        return range_in_range({b.node:range()}, {a.node:range()})
-    else
-        return nil
-    end
+function DocNode:is_in(dnode)
+    --- Check if range b is a subset of range a
+    asrow, ascol, aerow, aecol = dnode:range()
+    bsrow, bscol, berow, becol = self:range()
+    -- dnode starts before self
+    start = asrow < bsrow or (asrow == bsrow and ascol <= bscol)
+    -- dnode ends after self
+    last = aerow > berow or (aerow == berow and aecol >= becol)
+    return start and last
 end
 
---- Convert a query match to a DOM like node
+--- Convert a query match to a DOM like node {{{
 --
 --  This function is set up so that it can be called with an iterator:
 --      match_iterator = query:iter_matches(root, bufnr)
 --      docNode = match_to_docNode(query, match_iterator())
-local function match_to_docNode(query, pid, match, metadata)
+--
+--  Each match corresponds to one query defined in the .scm, with one entry per
+--  capture. So
+--     ((caption 
+--          short: ((bracket_group) @caption.short)? 
+--          long:  ((brace_group) @caption.long)
+--      ) @caption )
+--  Will match as:
+--      { caption.short = <node>, 
+--        caption.long = <node>,
+--        caption = <node>, }
+--  The captures with dots are added as extra parameters on the DocNode
+
+function DocNode:from_match(query, pid, match, metadata)
     -- If pid is nil, then there was nothing new from the match_iterator
     if pid == nil then
         return nil
@@ -50,7 +73,7 @@ local function match_to_docNode(query, pid, match, metadata)
         return t
     end
 
-    docNode = { children = {}, }
+    docNode = DocNode:new()
     for id, node in pairs(match) do
         name = query.captures[id]
         splitName = split(name)
@@ -75,58 +98,69 @@ local function match_to_docNode(query, pid, match, metadata)
     return docNode
 end
 
---- Makes a document subtree out of the rootNode from matches provided by match_iter
---
---  Returns the full subtree, and the next docNode, so that we can use it like
---  an iterator.
-local function make_subtree(query, rootNode, match_iter)
-    nextNode = match_to_docNode(query, match_iter())
-    while (is_child(rootNode, nextNode)) do
-        subtree, nextNode = make_subtree(query, nextNode, match_iter)
-        table.insert(rootNode.children, subtree)
-    end
-    return rootNode, nextNode
-end
+-- }}}
+
+-- Creating the doctree of a file {{{
 
 --- The main function to create the document tree.
 --
 --  This will have to be called whenever the buffer is changed
 --  TODO: can we cache this reasonably?
 --  TODO: maybe do some async processing so that it won't hang
-M.create_doc_tree = function(bufnr)
+function DocNode:from_buffer(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     local root = vim.treesitter.get_parser(bufnr, lang):trees()[1]:root()
     local query = vim.treesitter.get_query(lang, qgroup)
 
-    M._doc_tree = { capture = "root", children = {} }
+    rootnode = DocNode:new("root", root)
     match_iter = query:iter_matches(root, bufnr)
-    nextNode = match_to_docNode(query, match_iter())
+    nextNode = DocNode:from_match(query, match_iter())
     while (nextNode) do
-        subtree, nextNode = make_subtree(query, nextNode, match_iter)
-        table.insert(M._doc_tree.children, subtree)
+        subtree, nextNode = DocNode._make_subtree(query, nextNode, match_iter)
+        rootnode:addChild(subtree)
     end
 
-    return M._doc_tree
+    return rootnode
 end
 
+--- Makes a document subtree out of the rootNode from matches provided by match_iter
+--
+--  Returns the full subtree, and the next docNode, so that we can use it like
+--  an iterator.
+function DocNode._make_subtree(query, rootNode, match_iter)
+    nextNode = DocNode:from_match(query, match_iter())
+    while (nextNode and nextNode:is_in(rootNode)) do
+        subtree, nextNode = DocNode._make_subtree(query, nextNode, match_iter)
+        rootNode:addChild(subtree)
+    end
+    return rootNode, nextNode
+end
+
+-- }}}
+
+-- Printing the doctree {{{
+
 --- Create a formatted string of the docNode
-M.prettify = function(docNode, depth)
-    docNode = docNode or M._doc_tree
+function DocNode:prettify(depth)
+    -- Depth is how many spaces to prepend
     depth = depth or 0
 
     local prettified = {}
     -- Format the current docNode
-    local formatter = M.formatter[docNode.capture]
+    local formatter = DocNode.formatter[self.capture]
     if formatter then
-        table.insert(prettified, formatter(docNode, depth))
+        table.insert(prettified, formatter(self, depth))
     end
     -- Format the children at a deeper level
-    for _, child in ipairs(docNode.children) do
-        table.insert(prettified, M.prettify(child, depth + 2))
+    for _, child in ipairs(self.children) do
+        table.insert(prettified, child:prettify(depth + 2))
     end
 
     return table.concat(prettified, "\n")
 end
+
+
+--  Formatting functions {{{
 
 local function inner_text(node)
     local title = utils.get_text_in_node(node)
@@ -142,7 +176,7 @@ local function section_formatter(docNode, depth)
 end
 
 
-M.formatter = {
+DocNode.formatter = {
     document = function(docNode, depth)
         return prefix(depth) .. "DOCUMENT START"
     end,
@@ -174,10 +208,13 @@ M.formatter = {
     end,
 }
 
-return M
+-- }}}
+-- }}}
 
--- Design decisions,
--- ----------------
+return DocNode
+
+-- Design decisions {{{
+-- --------------------
 --
 -- Problem with nvim-treesitter matches:
 -- Only one capture of each type can be included in a group, because the key
@@ -213,3 +250,6 @@ return M
 -- Each match from `query:iter_matches()` is a list of the captures on
 -- the current pattern, so the `caption.short` and `caption.long` are given along
 -- with the `caption` node.
+-- }}}
+
+
