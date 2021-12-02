@@ -4,6 +4,8 @@
 local meta = require('nvim-latex')
 local DocNode = require('nvim-latex.doctree')
 
+local log = require("nvim-latex.log")
+
 local outline = {}
 
 -- Create the outline buffer
@@ -46,6 +48,22 @@ function outline.open_for(bufnr)
     outline._win_options(outwin)
     vim.api.nvim_set_current_win(curwin)
     outline._print_for(bufnr, fdata)
+end
+
+-- Close an outline window if it's open
+-- Can be used with an autocommand: 
+-- au nvimlatex BufWinLeave *.tex lua require('nvim-latex.outline).close_for('<afile>')
+function outline.close_for(bufnr, fdata)
+    if type(bufnr) == 'string' then
+        bufnr = vim.fn.bufnr(vim.fn.expand(bufnr))
+    end
+    local fdata = fdata or meta.get_filedata(bufnr)
+    if fdata.outline then
+        local winid = vim.fn.bufwinid(fdata.outline.bufnr)
+        if winid ~= -1 then
+            vim.api.nvim_win_hide(winid)
+        end
+    end
 end
 
 function outline._win_options(win)
