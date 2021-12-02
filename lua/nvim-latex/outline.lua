@@ -12,7 +12,7 @@ function outline.make_buffer()
     -- XXX  buffer names bust be unique
     --vim.api.nvim_buf_set_name(bufnr, "[OUTLINE]")
     vim.api.nvim_buf_set_option(bufnr, 'filetype', 'outline')
-    vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
+    --vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
     return bufnr
 end
 
@@ -43,10 +43,19 @@ function outline.open_for(bufnr)
     local curwin = vim.api.nvim_get_current_win()
     vim.cmd(':vsplit +b'..fdata.outline.bufnr)
     local outwin = vim.api.nvim_get_current_win()
+    outline._win_options(outwin)
     vim.api.nvim_set_current_win(curwin)
-    -- Write the outline in the buffer
+    outline._print_for(bufnr, fdata)
 end
 
+function outline._win_options(win)
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_win_set_option(win, 'signcolumn', 'no')
+end
+
+
+-- Print the outline into the buffer
 function outline._print_for(bufnr, fdata)
     bufnr = bufnr or vim.fn.bufnr()
     fdata = fdata or meta.get_filedata(bufnr)
