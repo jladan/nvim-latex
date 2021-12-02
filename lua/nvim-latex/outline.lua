@@ -47,6 +47,13 @@ function outline.open_for(bufnr)
     -- Write the outline in the buffer
 end
 
+function outline._print_for(bufnr, fdata)
+    bufnr = bufnr or vim.fn.bufnr()
+    fdata = fdata or meta.get_filedata(bufnr)
+    local tree = fdata.doctree or DocNode:from_buffer(bufnr)
+    vim.api.nvim_buf_set_lines(fdata.outline.bufnr, 0, -1, false, tree:prettify())
+end
+
 -- Possibly Useful functions:
 --  nvim_win_get_buf()
 --  nvim_win_get_tabpage

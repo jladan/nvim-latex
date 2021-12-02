@@ -168,10 +168,12 @@ function DocNode:prettify(depth)
     end
     -- Format the children at a deeper level
     for _, child in ipairs(self.children) do
-        table.insert(prettified, child:prettify(depth + 2))
+        for _, v in ipairs(child:prettify(depth + 2)) do
+            table.insert(prettified, v)
+        end
     end
 
-    return table.concat(prettified, "\n")
+    return prettified
 end
 
 
