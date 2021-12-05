@@ -58,6 +58,9 @@ end
 
 local M = {}
 
+-- Flag to track if the document has changed, and we need to update the file data
+M._doc_changed = true
+
 -- Document file data {{{
 
 -- The "Main document's metadata object", `M._docdata[<main-file>]` is to be
@@ -248,22 +251,26 @@ end
 -- Document setup {{{
 
 --- Set up the document data for the whole document
-function M.setup_document(bufnr)
+function M.setup_document(bufnr, force)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
-    local docdata = M.set_document_root(bufnr)
+    if M._doc_changed or force then
+        local docdata = M.set_document_root(bufnr)
 
-    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
-    docdata.files = {}
-    docdata.files[docdata.docfile] = bufnr
-    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+        local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
+        docdata.files = {}
+        docdata.files[docdata.docfile] = bufnr
+        M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+        M._doc_changed = false
+    else
+        log.debug("Document has not been changed since last scan")
+    end
 end
 
 function M._set_files(bufnr, docdata)
     log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
     vim.fn.bufload(bufnr)
     log.debug('file loaded in ', bufnr)
-    log.debug("*_set_files* first line of file: ", vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
     -- The create the data for current buffer, and assign the document to it
     local data = M.get_filedata(bufnr)
     data.doc = docdata
