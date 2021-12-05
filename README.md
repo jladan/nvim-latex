@@ -64,12 +64,11 @@ Insert a citation
         - [/] Flag if something has changed with autocommand
             - [X] Add flag to the module
             - [ ] create autocommand
-        - [ ] Re-scan from functions (bibliography or outline) if the flag  is set
+        - [X] Re-scan from functions (bibliography or outline) if the flag  is set
     - [ ] perform the document scan asynchronously
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
     - [X] track all related buffers, ideally in all buffers
-    - [ ] Do the scan automatically if the needed data isn't available
 - [/] Outlining
     - [X] Find all chapters, sections, subsections, etc
     - [X] Find all figures with captions and labels

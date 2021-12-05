@@ -44,14 +44,12 @@ end
 -- Find all the label definitions inside a multi-file document
 M.label_defs = function(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    -- Request a scan of the document
+    doc.setup_document(bufnr)
     local fdata = doc._filedata[bufnr]
     local matches = {}
-    if fdata and fdata.doc.files then
-        for file, bufnr in pairs(fdata.doc.files) do
-            utils.extend(matches, M.get_crossref_defs(bufnr))
-        end
-    else
-        matches = M.get_crossref_defs(bufnr)
+    for file, bufnr in pairs(fdata.doc.files) do
+        utils.extend(matches, M.get_crossref_defs(bufnr))
     end
     return matches
 end
@@ -70,7 +68,7 @@ end
 
 -- Equation references {{{
 
---- Find equation labels using vim.treesitter directly (alternate)
+--- Find equation labels using vim.treesitter directly
 M.get_eq_labels = function(bufnr, root)
     bufnr = bufnr or vim.fn.bufnr()
     local matches = ts_query.get_capture_matches(bufnr, '@eq-label', query_group, root)
@@ -84,14 +82,12 @@ end
 -- Find all the label definitions inside a multi-file document
 M.eq_defs = function(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
+    -- Request a scan of the document
+    doc.setup_document(bufnr)
     local fdata = doc._filedata[bufnr]
     local matches = {}
-    if fdata and fdata.doc.files then
-        for file, bufnr in pairs(fdata.doc.files) do
-            utils.extend(matches, M.get_eq_labels(bufnr))
-        end
-    else
-        matches = M.get_eq_labels(bufnr)
+    for file, bufnr in pairs(fdata.doc.files) do
+        utils.extend(matches, M.get_eq_labels(bufnr))
     end
     return matches
 end
@@ -131,13 +127,10 @@ end
 function M.get_citations(bufnr)
     bufnr = bufnr or vim.fn.bufnr()
     -- get the document data for the buffer
+    doc.setup_document(bufnr)
     local fdata = doc._filedata[bufnr]
-    if not fdata then
-        return
-    end
     local entries = {}
-    for file, _ in pairs(fdata.doc.bibs or {}) do
-        bibbuf = vim.fn.bufnr(file, true)
+    for file, bibbuf in pairs(fdata.doc.bibs or {}) do
         -- The buffer has to be loaded for nvim-treesitter
         vim.fn.bufload(bibbuf)
         local matches = ts_query.get_capture_matches(bibbuf, '@entry', "references")
