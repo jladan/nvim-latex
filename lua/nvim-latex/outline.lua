@@ -1,215 +1,102 @@
--- Create an outline of a latex document
+-- Outline window/buffer module
 
-local ts_query = require("nvim-treesitter.query")
-local utils = require("nvim-latex.utils")
 
-local M = {}
+local meta = require('nvim-latex')
+local DocNode = require('nvim-latex.doctree')
 
--- This module is just for latex
-local lang = "latex"
-local qgroup = "outline"
+local log = require("nvim-latex.log")
 
--- The DOM for the latex document
-M._doc_tree = { capture = "root", children = {}, }
+local outline = {}
 
---- Check if range b is a subset of range a
-local function range_in_range(b, a)
-    -- starting point
-    start = a[1] < b[1] or (a[1] == b[1] and a[2] <= b[2])
-    -- ending point
-    last = a[3] > b[3] or (a[3] == b[3] and a[4] >= b[4])
-    return start and last
+-- Create the outline buffer
+function outline.make_buffer()
+    local  bufnr = vim.api.nvim_create_buf(false, true)
+    -- XXX  buffer names bust be unique
+    --vim.api.nvim_buf_set_name(bufnr, "[OUTLINE]")
+    vim.api.nvim_buf_set_option(bufnr, 'filetype', 'outline')
+    --vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
+    return bufnr
 end
 
---- Check if the docNode b should be a child of docNode a
-local function is_child(a, b)
-    -- Checks if b is the child of a
-    if b then
-        return range_in_range({b.node:range()}, {a.node:range()})
+-- Toggle outline buffer
+function outline.toggle_for(bufnr)
+    local bufnr = bufnr or vim.fn.bufnr()
+    local fdata = meta.get_filedata(bufnr)
+    if not fdata.outline then
+        fdata.outline = { bufnr = outline.make_buffer(), }
+    end
+    -- Check to see if the buffer is open in a visible window
+    local winid = vim.fn.bufwinid(fdata.outline.bufnr)
+    if winid == -1 then
+        outline.open_for(bufnr)
     else
-        return nil
+        vim.api.nvim_win_hide(winid)
     end
 end
 
---- Convert a query match to a DOM like node
---
---  This function is set up so that it can be called with an iterator:
---      match_iterator = query:iter_matches(root, bufnr)
---      docNode = match_to_docNode(query, match_iterator())
-local function match_to_docNode(query, pid, match, metadata)
-    -- If pid is nil, then there was nothing new from the match_iterator
-    if pid == nil then
-        return nil
+-- Open an outline for the current buffer
+function outline.open_for(bufnr)
+    local bufnr = bufnr or vim.fn.bufnr()
+    local fdata = meta.get_filedata(bufnr)
+    if not fdata.outline then
+        fdata.outline = { bufnr = outline.make_buffer(), }
     end
-    -- split a capture name on '.'s
-    local function split(string)
-        local t = {}
-        for str in string.gmatch(string, "([^.]+)") do
-            table.insert(t, str)
+    -- Open a new window beside
+    local curwin = vim.api.nvim_get_current_win()
+    vim.cmd(':vsplit +b'..fdata.outline.bufnr)
+    local outwin = vim.api.nvim_get_current_win()
+    outline._win_options(outwin)
+    vim.api.nvim_set_current_win(curwin)
+    outline._print_for(bufnr, fdata)
+end
+
+-- Close an outline window if it's open
+-- Can be used with an autocommand: 
+-- au nvimlatex BufWinLeave *.tex lua require('nvim-latex.outline).close_for('<afile>')
+function outline.close_for(bufnr, fdata)
+    if type(bufnr) == 'string' then
+        bufnr = vim.fn.bufnr(vim.fn.expand(bufnr))
+    end
+    local fdata = fdata or meta.get_filedata(bufnr)
+    if fdata.outline then
+        local winid = vim.fn.bufwinid(fdata.outline.bufnr)
+        if winid ~= -1 then
+            vim.api.nvim_win_hide(winid)
         end
-        return t
     end
-
-    docNode = { children = {}, }
-    for id, node in pairs(match) do
-        name = query.captures[id]
-        splitName = split(name)
-        local curr = docNode
-        if #splitName == 1 then
-            -- Use the primary name for the docNode
-            docNode.capture = name
-        else
-            -- Descend down '.'s adding objects as necessary
-            for i = 2, #splitName do
-                if curr[splitName[i]] == nil then
-                    curr[splitName[i]] = {}
-                end
-                curr = curr[splitName[i]]
-            end
-        end
-        -- curr is now the object that the capture's node and metadata applies to
-        curr.node = node
-        curr.metadata = metadata[id]
-    end
-
-    return docNode
 end
 
---- Makes a document subtree out of the rootNode from matches provided by match_iter
---
---  Returns the full subtree, and the next docNode, so that we can use it like
---  an iterator.
-local function make_subtree(query, rootNode, match_iter)
-    nextNode = match_to_docNode(query, match_iter())
-    while (is_child(rootNode, nextNode)) do
-        subtree, nextNode = make_subtree(query, nextNode, match_iter)
-        table.insert(rootNode.children, subtree)
-    end
-    return rootNode, nextNode
+function outline._win_options(win)
+    vim.api.nvim_win_set_option(win, 'number', false)
+    vim.api.nvim_win_set_option(win, 'relativenumber', false)
+    vim.api.nvim_win_set_option(win, 'signcolumn', 'no')
 end
 
---- The main function to create the document tree.
---
---  This will have to be called whenever the buffer is changed
---  TODO: can we cache this reasonably?
---  TODO: maybe do some async processing so that it won't hang
-M.create_doc_tree = function(bufnr)
+
+-- Print the outline into the buffer
+function outline._print_for(bufnr, fdata)
     bufnr = bufnr or vim.fn.bufnr()
-    local root = vim.treesitter.get_parser(bufnr, lang):trees()[1]:root()
-    local query = vim.treesitter.get_query(lang, qgroup)
-
-    M._doc_tree = { capture = "root", children = {} }
-    match_iter = query:iter_matches(root, bufnr)
-    nextNode = match_to_docNode(query, match_iter())
-    while (nextNode) do
-        subtree, nextNode = make_subtree(query, nextNode, match_iter)
-        table.insert(M._doc_tree.children, subtree)
-    end
-
-    return M._doc_tree
+    fdata = fdata or meta.get_filedata(bufnr)
+    local tree = fdata.doctree or DocNode:from_buffer(bufnr)
+    vim.api.nvim_buf_set_lines(fdata.outline.bufnr, 0, -1, false, tree:prettify())
 end
 
---- Create a formatted string of the docNode
-M.prettify = function(docNode, depth)
-    docNode = docNode or M._doc_tree
-    depth = depth or 0
-
-    local prettified = {}
-    -- Format the current docNode
-    local formatter = M.formatter[docNode.capture]
-    if formatter then
-        table.insert(prettified, formatter(docNode, depth))
-    end
-    -- Format the children at a deeper level
-    for _, child in ipairs(docNode.children) do
-        table.insert(prettified, M.prettify(child, depth + 2))
-    end
-
-    return table.concat(prettified, "\n")
-end
-
-local function inner_text(node)
-    local title = utils.get_text_in_node(node)
-    return(string.sub(title, 2, -2))
-end
-
-local function prefix(depth)
-    return string.rep(" ", depth)
-end
-
-local function section_formatter(docNode, depth)
-    return prefix(depth) .. inner_text(docNode.title.node)
-end
-
-
-M.formatter = {
-    document = function(docNode, depth)
-        return prefix(depth) .. "DOCUMENT START"
-    end,
-    section = section_formatter,
-    subsection = section_formatter,
-    subsubsection = section_formatter,
-    paragraph = section_formatter,
-    subparagraph = section_formatter,
-    figure = function(docNode, depth)
-        local fig_path = nil
-        local fig_label = nil
-        for _, child in ipairs(docNode.children) do
-            if child.capture == "graphics" then
-                fig_path = utils.get_text_in_node(child.path.node)
-            elseif child.capture == "label" then
-                fig_label = utils.get_text_in_node(child.name.node)
-            end
-        end
-        return prefix(depth) .. "FIGURE " .. fig_label .. " :: " .. fig_path
-    end,
-    table = function(docNode, depth)
-        local table_label = ""
-        for _, child in ipairs(docNode.children) do
-            if child.capture == "label" then
-                table_label = utils.get_text_in_node(child.name.node)
-            end
-        end
-        return prefix(depth) .. "TABLE " .. table_label
-    end,
-}
-
-return M
-
--- Design decisions,
--- ----------------
+-- Possibly Useful functions:
+--  nvim_win_get_buf()
+--  nvim_win_get_tabpage
+--  nvim_win_hide
+--  win_findbuf() : gits list with ids for windows containing bufnr
+--  win_gitid([win, [tab]]) : window id from window number
+--  win_id2win, or win_id2tabwin
 --
--- Problem with nvim-treesitter matches:
--- Only one capture of each type can be included in a group, because the key
--- for the match is the capture name. So, we can have
--- `caption.long` and `figure.caption.long`
--- but we cannot have two different sections in one document
--- assigning to `document.section`, overwrites the previous section
+--  nvim set_current_win()
+--  nvim_list_wins()
 --
--- This method of access also makes iteration over children more complicated:
---   without knowing the key for the child, how do we know if it's actually a
---   child or just metadata associated with the capture?
--- That means that simply making `section.subsection` a list isn't sufficient:
---   `section.figure` would be a separate list, and the order between them is lost
---
--- Solution: a more conventional tree with nodes:
---     {capture = "document",
---      node = <ts_node>,
---      children = [<doc_node>,],
---      parent = <doc_node>    -- maybe
---     }
--- Because of this, I don't think it makes sense to use nvim-treesitter's iterators
--- They already create a nested structure that isn't really useful. There may be
--- some use in the way we get something like `caption.short` or `caption.long`,
--- and I'd turn that into,
---     {capture = "caption",
---      node = <ts_node>,
---      short = <ts_node>,
---      long = <ts_node>,
---      children = [],
---     }
--- But I can probably do that myself.
---
--- Each match from `query:iter_matches()` is a list of the captures on
--- the current pattern, so the `caption.short` and `caption.long` are given along
--- with the `caption` node.
+--  nvim_buf_set_lines()
+--  nvim_buf_add_highlight()
+--  nvim_buf_set_extmark() for tracking important locations in files
+
+-- nvim_buf_call
+-- nvim_win_call
+
+return outline
