@@ -64,11 +64,15 @@ Insert a citation
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
     - [X] track all related buffers, ideally in all buffers
+    - [ ] Do the scan automatically if the needed data isn't available
+    - [ ] Update on document changes
+        - [ ] Flag if something has changed with autocommand
+        - [ ] Re-scan from functions (bibliography or outline) if the flag  is set
 - [/] Outlining
     - [X] Find all chapters, sections, subsections, etc
     - [X] Find all figures with captions and labels
-    - [ ] Create a scratch buffer (`nvim_create_buf(false, true)`) that presents an outline of the document
-        - [ ] name the buffer "outline"
+    - [/] Create a scratch buffer (`nvim_create_buf(false, true)`) that presents an outline of the document
+        - [X] name the buffer "outline"
         - [ ] highlighting
         - [ ] custom formatting 
             - [ ] labels
@@ -79,9 +83,11 @@ Insert a citation
         - [ ] Folding for those longer outlines
     - [ ] Add the ability to jump from the outline to that part of the document.
     - [ ] Multifile support
-        - [ ] just the current file
+        - [X] just the current file
         - [ ] whole document outline
-    - [ ] Toggle showing outline with command
+    - [/] Toggle showing outline with command
+        - [X] toggle, show, and close functions
+        - [ ] vim command and/or hotkey (like with :TSPlaygroundToggle
 - [ ] Fixing errors and warnings
     - [ ] Navigate to next error/warning
         - Probably with LSP or aux file (will have to filter just the errors and warnings)
