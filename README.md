@@ -65,6 +65,7 @@ Insert a citation
             - [X] Add flag to the module
             - [ ] create autocommand
         - [X] Re-scan from functions (bibliography or outline) if the flag  is set
+        - [ ] Only re-scan changed files
     - [ ] perform the document scan asynchronously
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)

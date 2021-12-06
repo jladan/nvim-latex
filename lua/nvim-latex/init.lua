@@ -58,9 +58,6 @@ end
 
 local M = {}
 
--- Flag to track if the document has changed, and we need to update the file data
-M._doc_changed = true
-
 -- Document file data {{{
 
 -- The "Main document's metadata object", `M._docdata[<main-file>]` is to be
@@ -80,6 +77,7 @@ function M.get_docdata(docpath)
     docpath = vim.fn.fnamemodify(docpath, ':~:r')
     if not M._docdata[docpath] then 
         M._docdata[docpath] = {}
+        M._docdata[docpath]._unchanged = false
     end
     return M._docdata[docpath]
 end
@@ -97,6 +95,15 @@ function M.get_filedata(bufnr)
         -- M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
     end
     return M._filedata[bufnr]
+end
+
+function M.mark_changed(bufnr)
+    local fdata = M.get_filedata(bufnr)
+    fdata._unchanged = false
+    if fdata.doc then
+        fdata.doc._unchanged = false
+    end
+    log.debug(bufnr .. " marked as changed")
 end
 
 -- }}}
@@ -254,29 +261,39 @@ end
 function M.setup_document(bufnr, force)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
-    if M._doc_changed or force then
+    local fdata = M.get_filedata(bufnr)
+    if fdata and fdata.doc and fdata.doc._unchanged and (not force) then
+        log.debug("Document has not been changed since last scan")
+    else
         local docdata = M.set_document_root(bufnr)
 
         local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
         docdata.files = {}
         docdata.files[docdata.docfile] = bufnr
         M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
-        M._doc_changed = false
-    else
-        log.debug("Document has not been changed since last scan")
+        docdata._unchanged = true
     end
+end
+
+local function update_file(bufnr, docdata)
+    local fdata = M.get_filedata(bufnr)
+    if not fdata._unchanged then
+        fdata.doc = docdata
+        M.set_bibliographies(bufnr)
+        fdata.files = utils.file_set(M.inputs_in_buf(bufnr))
+        fdata._unchanged = true
+    else
+        log.debug("file has not been changed since last scan")
+    end
+    return fdata
 end
 
 function M._set_files(bufnr, docdata)
     log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
     vim.fn.bufload(bufnr)
-    log.debug('file loaded in ', bufnr)
     -- The create the data for current buffer, and assign the document to it
-    local data = M.get_filedata(bufnr)
-    data.doc = docdata
+    local data = update_file(bufnr, docdata)
     -- Begin setting files
-    M.set_bibliographies(bufnr)
-    data.files = utils.file_set(M.inputs_in_buf(bufnr))
     for file, bufnr in pairs(data.files) do
         -- if the file is already in data.doc.files, then it has already been loaded
         -- We skip loaded files to avoid infinite loops
