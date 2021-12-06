@@ -60,14 +60,16 @@ Insert a citation
     - [ ] integrate with zotero
     - [ ] show preview of reference from bibtex
 - [X] Multi-file documents
+    - [ ] Update on document changes
+        - [/] Flag if something has changed with autocommand
+            - [X] Add flag to the module
+            - [ ] create autocommand
+        - [X] Re-scan from functions (bibliography or outline) if the flag  is set
+        - [ ] Only re-scan changed files
     - [ ] perform the document scan asynchronously
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
     - [X] track all related buffers, ideally in all buffers
-    - [ ] Do the scan automatically if the needed data isn't available
-    - [ ] Update on document changes
-        - [ ] Flag if something has changed with autocommand
-        - [ ] Re-scan from functions (bibliography or outline) if the flag  is set
 - [/] Outlining
     - [X] Find all chapters, sections, subsections, etc
     - [X] Find all figures with captions and labels

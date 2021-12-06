@@ -5,6 +5,7 @@
 
 local ts_query = require("nvim-treesitter.query")
 local utils = require("nvim-latex.utils")
+local changedtick = vim.api.nvim_buf_get_changedtick
 
 local log = require("nvim-latex.log")
 
@@ -91,7 +92,7 @@ M._filedata = {}
 function M.get_filedata(bufnr)
     if not M._filedata[bufnr] then 
         M._filedata[bufnr] = {}
-        -- M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
+        M._filedata[bufnr]._tick = -1
     end
     return M._filedata[bufnr]
 end
@@ -239,7 +240,6 @@ function M.inputs_in_buf(bufnr)
         table.insert(files, fname)
     end
 
-    log.debug("*inputs_in_buf* returning ", files)
     return files
 end
 
@@ -247,29 +247,55 @@ end
 
 -- Document setup {{{
 
+local function doc_changed(docdata)
+    local result = false
+    if not docdata.files then
+        return true
+    else
+        for _, bufnr in pairs(docdata.files) do
+            result = result or  M.get_filedata(bufnr)._tick < changedtick(bufnr)
+        end
+    end
+    return result
+end
 --- Set up the document data for the whole document
-function M.setup_document(bufnr)
+function M.setup_document(bufnr, force)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
-    local docdata = M.set_document_root(bufnr)
+    local fdata = M.get_filedata(bufnr)
+    local docdata = fdata.doc or M.set_document_root(bufnr)
 
-    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
-    docdata.files = {}
-    docdata.files[docdata.docfile] = bufnr
-    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+    if doc_changed(docdata) then
+        local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
+        -- XXX We request an update of all files because it would be hard to find removed files
+        -- This seems fast enough in use
+        docdata.files = {}
+        docdata.files[docdata.docfile] = bufnr
+        M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+    else
+        log.debug("Document unchanged")
+    end
+end
+
+local function update_file(bufnr, docdata)
+    local fdata = M.get_filedata(bufnr)
+    if fdata._tick < changedtick(bufnr) then
+        fdata.doc = docdata
+        M.set_bibliographies(bufnr)
+        fdata.files = utils.file_set(M.inputs_in_buf(bufnr))
+        fdata._tick = changedtick(bufnr)
+    else
+        log.debug("file has not been changed since last scan")
+    end
+    return fdata
 end
 
 function M._set_files(bufnr, docdata)
     log.debug("Called '_set_files' on " .. vim.fn.bufname(bufnr))
     vim.fn.bufload(bufnr)
-    log.debug('file loaded in ', bufnr)
-    log.debug("*_set_files* first line of file: ", vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
     -- The create the data for current buffer, and assign the document to it
-    local data = M.get_filedata(bufnr)
-    data.doc = docdata
+    local data = update_file(bufnr, docdata)
     -- Begin setting files
-    M.set_bibliographies(bufnr)
-    data.files = utils.file_set(M.inputs_in_buf(bufnr))
     for file, bufnr in pairs(data.files) do
         -- if the file is already in data.doc.files, then it has already been loaded
         -- We skip loaded files to avoid infinite loops
@@ -278,7 +304,6 @@ function M._set_files(bufnr, docdata)
             M._set_files(bufnr, docdata)
         end
     end
-    log.debug("*_set_files* returning for " .. vim.fn.bufname(bufnr))
 end
 
 -- }}}
