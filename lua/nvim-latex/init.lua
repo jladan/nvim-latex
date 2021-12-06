@@ -5,6 +5,7 @@
 
 local ts_query = require("nvim-treesitter.query")
 local utils = require("nvim-latex.utils")
+local changedtick = vim.api.nvim_buf_get_changedtick
 
 local log = require("nvim-latex.log")
 
@@ -77,7 +78,7 @@ function M.get_docdata(docpath)
     docpath = vim.fn.fnamemodify(docpath, ':~:r')
     if not M._docdata[docpath] then 
         M._docdata[docpath] = {}
-        M._docdata[docpath]._unchanged = false
+        M._docdata[docpath]._tick = -1
     end
     return M._docdata[docpath]
 end
@@ -92,18 +93,9 @@ M._filedata = {}
 function M.get_filedata(bufnr)
     if not M._filedata[bufnr] then 
         M._filedata[bufnr] = {}
-        -- M._filedata[bufnr].doc = get_docdata(M.find_docfile(bufnr))
+        M._filedata[bufnr]._tick = -1
     end
     return M._filedata[bufnr]
-end
-
-function M.mark_changed(bufnr)
-    local fdata = M.get_filedata(bufnr)
-    fdata._unchanged = false
-    if fdata.doc then
-        fdata.doc._unchanged = false
-    end
-    log.debug(bufnr .. " marked as changed")
 end
 
 -- }}}
@@ -249,7 +241,6 @@ function M.inputs_in_buf(bufnr)
         table.insert(files, fname)
     end
 
-    log.debug("*inputs_in_buf* returning ", files)
     return files
 end
 
@@ -262,26 +253,22 @@ function M.setup_document(bufnr, force)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
     local fdata = M.get_filedata(bufnr)
-    if fdata and fdata.doc and fdata.doc._unchanged and (not force) then
-        log.debug("Document has not been changed since last scan")
-    else
-        local docdata = M.set_document_root(bufnr)
+    local docdata = M.set_document_root(bufnr)
 
-        local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
-        docdata.files = {}
-        docdata.files[docdata.docfile] = bufnr
-        M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
-        docdata._unchanged = true
-    end
+    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
+    docdata.files = {}
+    docdata.files[docdata.docfile] = bufnr
+    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+    docdata._unchanged = true
 end
 
 local function update_file(bufnr, docdata)
     local fdata = M.get_filedata(bufnr)
-    if not fdata._unchanged then
+    if fdata._tick < changedtick(bufnr) then
         fdata.doc = docdata
         M.set_bibliographies(bufnr)
         fdata.files = utils.file_set(M.inputs_in_buf(bufnr))
-        fdata._unchanged = true
+        fdata._tick = changedtick(bufnr)
     else
         log.debug("file has not been changed since last scan")
     end
@@ -302,7 +289,6 @@ function M._set_files(bufnr, docdata)
             M._set_files(bufnr, docdata)
         end
     end
-    log.debug("*_set_files* returning for " .. vim.fn.bufname(bufnr))
 end
 
 -- }}}
