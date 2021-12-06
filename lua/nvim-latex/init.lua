@@ -78,7 +78,6 @@ function M.get_docdata(docpath)
     docpath = vim.fn.fnamemodify(docpath, ':~:r')
     if not M._docdata[docpath] then 
         M._docdata[docpath] = {}
-        M._docdata[docpath]._tick = -1
     end
     return M._docdata[docpath]
 end
@@ -248,18 +247,34 @@ end
 
 -- Document setup {{{
 
+local function doc_changed(docdata)
+    local result = false
+    if not docdata.files then
+        return true
+    else
+        for _, bufnr in pairs(docdata.files) do
+            result = result or  M.get_filedata(bufnr)._tick < changedtick(bufnr)
+        end
+    end
+    return result
+end
 --- Set up the document data for the whole document
 function M.setup_document(bufnr, force)
     bufnr = bufnr or vim.fn.bufnr()
     log.debug("Called 'setup_document' on " .. vim.fn.bufname(bufnr))
     local fdata = M.get_filedata(bufnr)
-    local docdata = M.set_document_root(bufnr)
+    local docdata = fdata.doc or M.set_document_root(bufnr)
 
-    local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
-    docdata.files = {}
-    docdata.files[docdata.docfile] = bufnr
-    M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
-    docdata._unchanged = true
+    if doc_changed(docdata) then
+        local bufnr = vim.fn.bufnr(vim.fn.expand(docdata.docfile), true)
+        -- XXX We request an update of all files because it would be hard to find removed files
+        -- This seems fast enough in use
+        docdata.files = {}
+        docdata.files[docdata.docfile] = bufnr
+        M._set_files(vim.fn.bufnr(vim.fn.expand(docdata.docfile), true), docdata)
+    else
+        log.debug("Document unchanged")
+    end
 end
 
 local function update_file(bufnr, docdata)
