@@ -1,39 +1,36 @@
 ; Queries used to find metadata in latex documents
 
 ; Matching section and float labels {{{
-((_
-    ;; All section macros have a bracegroup, but environments don't
-    text: ((brace_group))
-    (label_definition name: (word) @label)
- ) 
+(label_definition
+    name: (curly_group_text (text) @label)
 )
 
-((environment
-    begin: (begin name: (word) @float-name)
-    (label_definition name: (word) @label)
+((generic_environment
+    begin: (begin name: (curly_group_text (text) @float-name))
+    (label_definition name: (curly_group_text (text) @label))
  ) @float
- (#any-of? @float-name "figure" "table")
+ (#any-of? @float-name "figure" "figure*" "table")
 )
 
 ; }}}
 
 ; Matching equations {{{
-((equation_label_reference
-    label: (word) @eqref
- ))
+(math_environment
+    (label_definition
+        name: (curly_group_text (text) @label)
+    )
+)
 
 ; This will match each label, but the related captures will match multiple
-; times for each environment
-((environment
-    begin: (begin name: (word) @eq-name)
-    (label_definition name: (word) @eq-label)?
+; times for each generic_environment
+((math_environment
+    (label_definition name: (curly_group_text (text) @eq-label))?
  )
- (#any-of? @eq-name "align" "align*" "equation" "equation*")
 )
 
 
 ;; The following matches are for finding other files
 ((bibtex_include
-    path: ((path) @bibliography.path)
+    path: (curly_group_path (path) @bibliography.path)
  ) @bibliography
 )

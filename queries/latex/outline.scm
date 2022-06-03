@@ -1,77 +1,76 @@
 ; A set of queries for outlining a latex document
 
 ; Input files (for multi-file documents)
-((latex_input path: ((path) @input.path) ) @input)
+;((latex_include ((path) @input.path) ) @input)
 
-; ENVIRONMENTS
-((environment
-    begin: (begin
-        name: (word) @document.type)
- ) @document
+; generic_environmentS
+(generic_environment
+    begin: (begin name: (curly_group_text (text) @document.type))
+ @document
  (#match? @document.type "document")
 )
 
-((environment
-    begin: (begin
-        name: (word) @abstract.type)
-    child: (_) @abstract.contents) @abstract
- (#match? @abstract.type "abstract"))
+(generic_environment
+    begin: (begin name: (curly_group_text (text) @abstract.type))
+ @abstract
+ (#match? @abstract.type "document")
+)
 
-((environment
-    begin: (begin name: (word) @figure.type)
+((generic_environment
+    begin: (begin name: (curly_group_text (text) @figure.type))
     ) @figure
  (#match? @figure.type "figure"))
 
-((environment
-    begin: (begin name: (word) @table.type)
+((generic_environment
+    begin: (begin name: (curly_group_text (text) @table.type))
     ) @table
  (#match? @table.type "table"))
 
 ; SECTIONS
 ((chapter
-    text: ((brace_group) @chapter.title)
+    text: ((curly_group) @chapter.title)
  ) @chapter
 )
 
 ((section
-    text: ((brace_group) @section.title)
+    text: ((curly_group) @section.title)
  ) @section
 )
 
 ((subsection
-    text: ((brace_group) @subsection.title)
+    text: ((curly_group) @subsection.title)
  ) @subsection
 )
 
 ((subsubsection
-    text: ((brace_group) @subsubsection.title)
+    text: ((curly_group) @subsubsection.title)
  ) @subsubsection
 )
 
 ((paragraph
-    text: ((brace_group) @paragraph.title)
+    text: ((curly_group) @paragraph.title)
  ) @paragraph
 )
 
 ((subparagraph
-    text: ((brace_group) @subparagraph.title)
+    text: ((curly_group) @subparagraph.title)
  ) @subparagraph
 )
 
 ; METADATA
 ((caption
-   short: ((bracket_group) @caption.short)?
-   long:  ((brace_group) @caption.long)
+   short: ((brack_group) @caption.short)?
+   long:  ((curly_group) @caption.long)
  ) @caption
 )
 
 ((label_definition
-    name: ((word) @label.name)
+    name: (curly_group_text (text) @label.name)
  ) @label
 )
 
 ((graphics_include
-    path: ((path) @graphics.path)
+    path: (curly_group_path (path) @graphics.path)
  ) @graphics
 )
 
