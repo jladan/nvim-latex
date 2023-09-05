@@ -1,0 +1,65 @@
+## TODO / features
+
+- [/] Cross-references
+    - [ ] Find cross-references in whole document.
+        - [x] Find and list all `\label{}`s in a file.
+        - [x] pull labels, references, and citations from all files
+    - [x] insert a reference from a menu 
+        - [x] specific to sections and floats for `\ref`
+        - [x] equation references with `\eqref`
+        - [ ] sort by relevance
+            - [ ] prefer current file
+            - [ ] prefer reftype by context before (chapter, appendix, section, figure, table)
+    - [ ] check for `\ref{}` with missing `\label{}`
+    - [ ] navigate to label definition, or reference
+- [/] Citations
+    - [x] Full document support
+        - [x] Pull citation keys from the `\bibliography` command (bibtex)
+        - [x] find `\bibliography` for all files
+    - [ ] Pull citation keys from `\bibitem`s in the document
+    - [/] insert a citation from a menu
+        - [x] insert selected citations with `\cite{}`
+        - [ ] insert just the citation label (without the surrounding cite)
+        - [ ] \citep, \citet options with natbib
+    - [ ] list all missing citation keys
+    - [x] integrate with zotero
+    - [ ] show preview of reference from bibtex
+- [x] Multi-file documents
+    - [ ] Update on document changes
+        - [/] Flag if something has changed with autocommand
+            - [x] Add flag to the module
+            - [ ] create autocommand
+        - [x] Re-scan from functions (bibliography or outline) if the flag  is set
+        - [ ] Only re-scan changed files
+    - [ ] perform the document scan asynchronously
+    - [x] reliably determine which file is the root document
+          (checks for `\documentclass`, then looks for `.latexmkrc`)
+    - [x] track all related buffers, ideally in all buffers
+- [/] Outlining
+    - [x] Find all chapters, sections, subsections, etc
+    - [x] Find all figures with captions and labels
+    - [/] Create a scratch buffer (`nvim_create_buf(false, true)`) that presents an outline of the document
+        - [x] name the buffer "outline"
+        - [ ] highlighting
+        - [ ] custom formatting 
+            - [ ] labels
+            - [ ] indent label
+            - [ ] content preview
+            - [ ] ...
+        - [ ] highlight current position in document
+        - [ ] Folding for those longer outlines
+    - [ ] Add the ability to jump from the outline to that part of the document.
+    - [ ] Multifile support
+        - [x] just the current file
+        - [ ] whole document outline
+    - [/] Toggle showing outline with command
+        - [x] toggle, show, and close functions
+        - [ ] vim command and/or hotkey (like with :TSPlaygroundToggle
+- [ ] Fixing errors and warnings
+    - [ ] Navigate to next error/warning
+        - Probably with LSP or aux file (will have to filter just the errors and warnings)
+    - [ ] find unlabelled sections, figures, equations
+    - [ ] suggest labels for sections, figures, equations
+    - [ ] suggest matches for undefined references (like a spell check)
+    - [ ] find duplicated labels
+

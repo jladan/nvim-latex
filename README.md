@@ -1,7 +1,13 @@
 # nvim-latex
-**In early development**
-Neovim plugin to manage citations and crossreferences in Latex documents. Also
-provide an outline of the whole document.
+
+**No longer maintained** This project has been abandoned, because the `texlab`
+language server performs its main function. Also, because it was difficult to
+maintain with changes upstream (telescope, and the latex treesitter grammar),
+and I am not writing much latex anymore. 
+
+This is a Neovim plugin to manage citations and crossreferences in Latex documents. 
+It was also going to provide an outline of the whole document, which can be
+useful for larger projects with multiple files.
 
 # Usage
 
@@ -42,31 +48,19 @@ Insert a citation
     - [X] insert a reference from a menu 
         - [X] specific to sections and floats for `\ref`
         - [X] equation references with `\eqref`
-        - [ ] sort by relevance
-            - [ ] prefer current file
-            - [ ] prefer reftype by context before (chapter, appendix, section, figure, table)
-    - [ ] check for `\ref{}` with missing `\label{}`
-    - [ ] navigate to label definition, or reference
 - [/] Citations
     - [X] Full document support
         - [X] Pull citation keys from the `\bibliography` command (bibtex)
         - [X] find `\bibliography` for all files
-    - [ ] Pull citation keys from `\bibitem`s in the document
     - [/] insert a citation from a menu
         - [X] insert selected citations with `\cite{}`
-        - [ ] insert just the citation label (without the surrounding cite)
-        - [ ] \citep, \citet options with natbib
-    - [ ] list all missing citation keys
-    - [ ] integrate with zotero
-    - [ ] show preview of reference from bibtex
+    - [X] integrate with zotero
 - [X] Multi-file documents
     - [ ] Update on document changes
         - [/] Flag if something has changed with autocommand
             - [X] Add flag to the module
             - [ ] create autocommand
         - [X] Re-scan from functions (bibliography or outline) if the flag  is set
-        - [ ] Only re-scan changed files
-    - [ ] perform the document scan asynchronously
     - [X] reliably determine which file is the root document
           (checks for `\documentclass`, then looks for `.latexmkrc`)
     - [X] track all related buffers, ideally in all buffers
@@ -75,28 +69,6 @@ Insert a citation
     - [X] Find all figures with captions and labels
     - [/] Create a scratch buffer (`nvim_create_buf(false, true)`) that presents an outline of the document
         - [X] name the buffer "outline"
-        - [ ] highlighting
-        - [ ] custom formatting 
-            - [ ] labels
-            - [ ] indent label
-            - [ ] content preview
-            - [ ] ...
-        - [ ] highlight current position in document
-        - [ ] Folding for those longer outlines
-    - [ ] Add the ability to jump from the outline to that part of the document.
-    - [ ] Multifile support
-        - [X] just the current file
-        - [ ] whole document outline
-    - [/] Toggle showing outline with command
-        - [X] toggle, show, and close functions
-        - [ ] vim command and/or hotkey (like with :TSPlaygroundToggle
-- [ ] Fixing errors and warnings
-    - [ ] Navigate to next error/warning
-        - Probably with LSP or aux file (will have to filter just the errors and warnings)
-    - [ ] find unlabelled sections, figures, equations
-    - [ ] suggest labels for sections, figures, equations
-    - [ ] suggest matches for undefined references (like a spell check)
-    - [ ] find duplicated labels
 
 ## Dependencies
 
